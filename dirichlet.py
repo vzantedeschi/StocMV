@@ -14,12 +14,12 @@ def KL(alpha, beta):
 
     return res
 
-def error(params, sample, eps=1e-6):
+def error(params, sample, eps=1e-8):
 
     alpha, predictors = params
     x, y = sample
 
-    y_pred = jnp.array([p.predict(x) for p in predictors])
+    y_pred = jnp.array([p(x) for p in predictors])
 
     # overcomplicated solution to avoid errors due to boolean indexing in jax
     correct = jnp.where(y_pred == y, np.arange(len(alpha)), len(alpha))
