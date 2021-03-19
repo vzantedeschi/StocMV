@@ -8,7 +8,7 @@ def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000):
     grad_alpha = grad(cost, argnums=0)
 
     for i in range(num_iters):
-
+        
         g = grad_alpha(alpha, *params)
         alpha -= lr * g
         alpha = jnp.clip(alpha, 0)
