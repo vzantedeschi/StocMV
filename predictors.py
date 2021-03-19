@@ -2,7 +2,7 @@
 # support only binary classification
 def stump(x, index, threshold, sign):
 
-    return sign * (1 - 2*(x[index] > threshold))
+    return sign * (1 - 2*(x[:, index] > threshold))
 
 def uniform_decision_stumps(M, d, min_v, max_v):
 

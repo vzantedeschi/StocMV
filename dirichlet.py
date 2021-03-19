@@ -35,25 +35,14 @@ def KL(alpha, beta):
     return res
 
 # 01-loss for one point
-def error(params, sample, eps=1e-8):
+def risk(alpha, predictors, sample, eps=1e-8):
 
-    alpha, predictors = params
     x, y = sample
 
-    y_pred = jnp.array([p(x) for p in predictors])
+    y_pred = jnp.stack([p(x) for p in predictors], 1)
 
-    correct = jnp.where(y_pred == y, alpha, 0.).sum()
-    wrong = jnp.where(y_pred != y, alpha, 0.).sum()
+    # import pdb; pdb.set_trace()
+    correct = jnp.where(y_pred == y[:, None], alpha, 0.).sum(1)
+    wrong = jnp.where(y_pred != y[:, None]  , alpha, 0.).sum(1)
 
-    return regbetainc(correct+eps, wrong+eps, 0.5)
-
-# empirical risk over the batch
-def risk_vmap(alpha, predictors, batch):
-
-    return jnp.mean(vmap(partial(error, (alpha, predictors)))(batch))
-
-def risk_loop(alpha, predictors, batch):
-
-    errs = jnp.array([error((alpha, predictors), (x, y)) for x, y in zip(*batch)])
-
-    return jnp.mean(errs)
+    return sum([regbetainc(c+eps, w+eps, 0.5) for c, w in zip(correct, wrong)]) / len(x)

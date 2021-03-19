@@ -15,7 +15,7 @@ def load_normals(n_train, n_test, means, scales):
         train_y.append(i * np.ones(n_train))
         test_y.append(i * np.ones(n_test))
 
-    train_x, train_y, test_x, test_y = np.vstack(train_x), np.hstack(train_y), np.vstack(test_x), np.hstack(test_y)
+    train_x, train_y, test_x, test_y = np.vstack(train_x), np.concatenate(train_y), np.vstack(test_x), np.concatenate(test_y)
 
     if len(means) == 2:
         train_y[train_y == 0] = -1
