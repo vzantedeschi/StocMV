@@ -1,3 +1,5 @@
+import jax.numpy as jnp
+
 from jax import grad, jit
 from jax.experimental.optimizers import adam
 
@@ -7,7 +9,9 @@ def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000):
 
     for i in range(num_iters):
 
-        alpha -= lr * grad_alpha(alpha, *params)
+        g = grad_alpha(alpha, *params)
+        alpha -= lr * g
+        alpha = jnp.clip(alpha, 0)
 
         if i % 100 == 0:
             print(alpha, cost(alpha, *params))
