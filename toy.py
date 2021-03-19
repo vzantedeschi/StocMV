@@ -1,3 +1,5 @@
+import numpy as np
+
 import jax.numpy as jnp
 import jax.random as jrand
 
@@ -26,11 +28,11 @@ n_train, n_test = 10, 50
 delta = 0.01
 M = 12
 rnd_seed = 17032021
+
+np.random.seed(rnd_seed)
 jkey = jrand.PRNGKey(rnd_seed)
 
 beta = jnp.ones(M) * 0.1 # prior
-# alpha = jnp.ones(M) * 0.1 # posterior
-
 alpha = jrand.uniform(jkey, shape=(M,), minval=0.01, maxval=2) # posterior
 
 train_x, train_y, test_x, test_y = load_normals(n_train, n_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
