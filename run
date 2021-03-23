@@ -1,0 +1,13 @@
+#!/bin/bash
+
+#SBATCH -J coucou
+#SBATCH -p SHORT
+##SBATCH --mail-type=ALL
+##SBATCH --mail-user=paul.viallard@univ-st-etienne.fr
+#SBATCH -n 1
+#SBATCH -c 1
+#SBATCH -N 1
+
+source /home_expes/tools/python/Python-3.8.7_cpu//bin/activate
+export PYTHONUNBUFFERED=1
+eval $1
