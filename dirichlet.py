@@ -14,14 +14,14 @@ def regbetainc(p, q, x):
     b = betainc(x, p, q)
     return b
 
-def b_fwd(p, q, x):
+def b_fwd(p, q, x, eps=1e-8):
 
     return betainc(x, p, q), (betaincderp(x, p, q), betaincderq(x, p, q))
 
 def b_bwd(res, g):
     
     dev_p, dev_q = res # Gets residuals computed in b_fwd
-    return (dev_p * g, dev_q * g, 0)
+    return (dev_p * g, dev_q * g, None)
 
 regbetainc.defvjp(b_fwd, b_bwd)
 
