@@ -1,20 +1,17 @@
+import numpy as np
 
 # support only binary classification
-def stump(x, index, threshold, sign):
-
-    return sign * (1 - 2*(x[:, index] > threshold))
+def stumps_predict(x, thresholds, signs):
+    
+    return signs * (1 - 2*(x[..., None] > thresholds).reshape((len(x), -1)))
 
 def uniform_decision_stumps(M, d, min_v, max_v):
 
-    per_d = (M // 2 + d - 1) // d
-    # get nb_clfs/dimensions regular thresholds
-    interval = (max_v - min_v) / per_d
-    thresholds = [min_v + (i+1)*interval for i in range(per_d)]
-    print(thresholds)
-    base_clfs = []
+    thresholds = np.linspace(min_v, max_v, M, endpoint=False, axis=-1) # get M evenly spaced thresholds in the interval [min_v, max_v] per dimension
+    
+    sigs = np.ones(M * d * 2) 
+    sigs[M * d:] = -1 # first M stumps return one class, last M return the other
 
-    for j in range(d): 
-        base_clfs += [lambda x: stump(x, j, t, 1) for t in thresholds]
-        base_clfs += [lambda x: stump(x, j, t, -1) for t in thresholds]
+    stumps = lambda x: stumps_predict(x, np.hstack((thresholds, thresholds)), sigs)
 
-    return base_clfs
+    return stumps, len(sigs)

@@ -1,4 +1,5 @@
 import numpy as np
+import random
 
 import jax.numpy as jnp
 import jax.random as jrand
@@ -24,22 +25,23 @@ def mcallester_bound(alpha, beta, delta, predictors, data, verbose=False):
 
     return bound 
 
-n_train, n_test = 1000, 50
+n_train, n_test = 10, 5
 delta = 0.01
-M = 12
+M = 4
 rnd_seed = 17032021
 
 np.random.seed(rnd_seed)
 random.seed(rnd_seed)
-
 jkey = jrand.PRNGKey(rnd_seed)
-
-beta = jnp.ones(M) * 0.1 # prior
-alpha = jrand.uniform(jkey, shape=(M,), minval=0.01, maxval=2) # posterior
 
 train_x, train_y, test_x, test_y = load_normals(n_train, n_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
 
-predictors = uniform_decision_stumps(M, train_x.shape[1], train_x.min(), train_x.max())
+d = train_x.shape[1]
+
+predictors, num_preds = uniform_decision_stumps(M, d, train_x.min(0), train_x.max(0))
+
+beta = jnp.ones(M) * 0.1 # prior
+alpha = jrand.uniform(jkey, shape=(num_preds,), minval=0.01, maxval=2) # posterior
 
 test_error = risk(alpha, predictors, (test_x, test_y))
 

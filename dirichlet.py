@@ -39,9 +39,9 @@ def risk(alpha, predictors, sample, eps=1e-8):
 
     x, y = sample
 
-    y_pred = jnp.stack([p(x) for p in predictors], 1)
-
+    y_pred = predictors(x)
     # import pdb; pdb.set_trace()
+
     correct = jnp.where(y_pred == y[:, None], alpha, 0.).sum(1)
     wrong = jnp.where(y_pred != y[:, None]  , alpha, 0.).sum(1)
 
