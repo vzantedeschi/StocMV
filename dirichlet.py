@@ -8,47 +8,39 @@ from jax.scipy.stats import beta
 from functools import partial
 
 # regularized incomplete beta function and its forward and backward passes
-def regbetainc(p, q, x, npts=100):
+@custom_vjp
+def regbetainc(p, q, x):
+    b = betainc(x, p, q)
+    return b
+
+def b_fwd(p, q, x, eps=1e-8):
+
+    return betainc(x, p, q), (betaincderp(x, p, q), betaincderq(x, p, q))
+
+def b_bwd(res, g):
     
-    t = jnp.linspace(1e-8, x, npts)
-    
-    return jnp.trapz(jnp.exp(beta.logpdf(t, p, q)), t)
+    dev_p, dev_q = res # Gets residuals computed in b_fwd
+    return (dev_p * g, dev_q * g, None)
+
+regbetainc.defvjp(b_fwd, b_bwd)
 
 # Kullback-Leibler divergence between two Dirichlets
-def KL(alpha, beta):
-
-    res = gammaln(jnp.sum(alpha)) - jnp.sum(gammaln(alpha))
-    res -= gammaln(jnp.sum(beta)) - jnp.sum(gammaln(beta))
-    res += jnp.sum((alpha - beta) * (digamma(alpha) - digamma(jnp.sum(alpha))))
+def KL(alpha, beta, eps=1e-8):
+    
+    res = gammaln(jnp.sum(alpha) + eps) - jnp.sum(gammaln(alpha + eps))
+    res -= gammaln(jnp.sum(beta) + eps) - jnp.sum(gammaln(beta + eps))
+    res += jnp.sum((alpha - beta) * (digamma(alpha + eps) - digamma(jnp.sum(alpha) + eps)))
 
     return res
 
-# 01-loss for one point
-def error(params, sample, eps=1e-8):
-
-    alpha, predictors = params
-    x, y = sample
-
-    y_pred = jnp.array([p(x) for p in predictors])
-
-    correct = jnp.where(y_pred == y, alpha, 0.).sum()
-    wrong = jnp.where(y_pred != y, alpha, 0.).sum()
-
-    return regbetainc(correct+eps, wrong+eps, 0.5)
-
-# empirical risk over the batch
-def risk_vmap(alpha, predictors, batch):
-
-    return jnp.mean(vmap(partial(error, (alpha, predictors)))(batch))
-
-# 01-loss for one point
+# 01-loss applied to dataset
 def risk(alpha, predictors, sample, eps=1e-8):
 
     x, y = sample
 
-    y_pred = jnp.stack([p(x) for p in predictors], 1)
-
+    y_pred = predictors(x)
     # import pdb; pdb.set_trace()
+
     correct = jnp.where(y_pred == y[:, None], alpha, 0.).sum(1)
     wrong = jnp.where(y_pred != y[:, None]  , alpha, 0.).sum(1)
 
