@@ -26,15 +26,15 @@ def b_bwd(res, g):
 regbetainc.defvjp(b_fwd, b_bwd)
 
 # Kullback-Leibler divergence between two Dirichlets
-def KL(alpha, beta):
-
-    res = gammaln(jnp.sum(alpha)) - jnp.sum(gammaln(alpha))
-    res -= gammaln(jnp.sum(beta)) - jnp.sum(gammaln(beta))
-    res += jnp.sum((alpha - beta) * (digamma(alpha) - digamma(jnp.sum(alpha))))
+def KL(alpha, beta, eps=1e-8):
+    
+    res = gammaln(jnp.sum(alpha) + eps) - jnp.sum(gammaln(alpha + eps))
+    res -= gammaln(jnp.sum(beta) + eps) - jnp.sum(gammaln(beta + eps))
+    res += jnp.sum((alpha - beta) * (digamma(alpha + eps) - digamma(jnp.sum(alpha) + eps)))
 
     return res
 
-# 01-loss for one point
+# 01-loss applied to dataset
 def risk(alpha, predictors, sample, eps=1e-8):
 
     x, y = sample

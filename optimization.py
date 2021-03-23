@@ -14,7 +14,7 @@ def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000):
         alpha = jnp.clip(alpha, 0)
 
         if i % 100 == 0:
-            print(alpha, cost(alpha, *params))
+            print(f"alpha={alpha}, objective={cost(alpha, *params)}")
 
     return alpha
 
