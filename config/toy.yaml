@@ -1,5 +1,5 @@
 model:
-  M: 10 # number of predictors, is stumps: 2*M per dimension
+  M: 16 # number of predictors, is stumps: 2*M per dimension
   prior: 0.1 # param of the Dirichlet prior
   pred: "stumps-uniform" # or stumps-optimal
 
@@ -11,8 +11,8 @@ training:
 
 dataset:
   distr: normals # or moons
-  N_train: 200 # number of training points
-  N_test: 1000 # number of test points
+  N_train: 200 # number of training points per class
+  N_test: 1000 # number of test points per class
 
 bound:
   delta: 0.01

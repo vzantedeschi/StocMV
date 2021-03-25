@@ -18,83 +18,72 @@ from monitors import MonitorMV
 from optimization import batch_gradient_descent
 from predictors import uniform_decision_stumps, custom_decision_stumps
 
-@hydra.main(config_path='config/toy.yaml')
+@hydra.main(config_name='config/toy.yaml')
 def main(cfg):
 
     np.random.seed(cfg.training.seed)
     random.seed(cfg.training.seed)
     jkey = jrand.PRNGKey(cfg.training.seed)
 
-    if cfg.dataset.distr == "normals":
-        
-        train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
-
-    else:
-        train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test)
-
-    d = train_x.shape[1]
-
-    if cfg.model.pred == "stumps-uniform":
-        predictors, cfg.model.M = uniform_decision_stumps(cfg.model.M, d, train_x.min(0), train_x.max(0))
-
-    elif cfg.model.pred == "stumps-optimal":
-        predictors, cfg.model.M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
-
-    # use exp(log(alpha)) for numerical stability
-    beta = jnp.log(jnp.ones(cfg.model.M) * cfg.model.prior) # prior
-    alpha = jnp.log(jrand.uniform(jkey, shape=(cfg.model.M,), minval=0.01, maxval=2)) # posterior
-
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.training.risk}/{cfg.model.pred}/{cfg.dataset.distr}/N={cfg.dataset.N_train}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seed={cfg.training.seed}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.training.risk}/{cfg.model.pred}/{cfg.dataset.distr}/prior={cfg.model.prior}/lr={cfg.training.lr}/seed={cfg.training.seed}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve())
 
-    test_error = risk(alpha, predictors, (test_x, test_y))
-    print("Initial test error:", test_error)
+    n_values = [1, 10, 100, 500, 1000]
+    results = {"time": [], f"{cfg.bound.type}-bound": [], "test-error": [], "n-values": n_values}
+    for n in n_values:
 
-    print(f"Initial McAllester bound, for delta={cfg.bound.delta}, n={cfg.dataset.N_train}")
-    mcallester_bound(alpha, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
+        if cfg.dataset.distr == "normals":
+            train_x, train_y, test_x, test_y = load(cfg.dataset.distr, n, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
 
-    # t1 = time()
-    # alpha_mca = batch_gradient_descent(mcallester_bound, alpha, (beta, cfg.bound.delta, predictors, (train_x, train_y)), lr=1, num_iters=10)
-    # t2 = time()
+        else:
+            train_x, train_y, test_x, test_y = load(cfg.dataset.distr, n, cfg.dataset.N_test)
 
-    # print(f"Optimized McAllester bound, for cfg.bound.delta={cfg.bound.delta}, n={n_train}")
-    # mcallester_bound(alpha_mca, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
-    # print(f"{t2-t1}s for 10 iterations")
-    # test_error = risk(alpha_err, predictors, (test_x, test_y))
+        if cfg.model.pred == "stumps-uniform":
+            predictors, cfg.model.M = uniform_decision_stumps(cfg.model.M, 2, train_x.min(0), train_x.max(0))
 
-    # print("Optimized test error:", test_error)
+        elif cfg.model.pred == "stumps-optimal":
+            predictors, cfg.model.M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
-    # init train-eval monitoring 
-    monitor = MonitorMV(SAVE_DIR)
+        # use exp(log(alpha)) for numerical stability
+        beta = jnp.log(jnp.ones(cfg.model.M) * cfg.model.prior) # prior
+        alpha = jnp.log(jrand.uniform(jkey, shape=(cfg.model.M,), minval=0.01, maxval=2)) # posterior
 
-    if cfg.training.risk == "exact":
+        # init train-eval monitoring 
+        monitor = MonitorMV(SAVE_DIR)
 
-        print("Optimize empirical risk")
-        cost, params = risk, (predictors, (train_x, train_y))
+        if cfg.training.risk == "exact":
 
+            print("Optimize empirical risk")
+            cost, params = risk, (predictors, (train_x, train_y))
 
-    elif cfg.training.risk == "MC":
+        elif cfg.training.risk == "MC":
 
-        print("Optimize empirical sigmoid risk")
-        cost, params = approximated_risk, (predictors, (train_x, train_y), sigmoid_loss, jkey)
+            print("Optimize empirical sigmoid risk")
+            cost, params = approximated_risk, (predictors, (train_x, train_y), sigmoid_loss, jkey)
 
-    t1 = time()
-    alpha_opt = batch_gradient_descent(cost, alpha, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
-    t2 = time()
-    print(f"{t2-t1}s for {cfg.training.iter} iterations")
+        t1 = time()
+        alpha_opt = batch_gradient_descent(cost, alpha, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
+        t2 = time()
+        print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-    test_error = risk(alpha_opt, predictors, (test_x, test_y))
+        test_error = risk(alpha_opt, predictors, (test_x, test_y))
 
-    print("Optimized test error:", test_error)
+        print("Optimized test error:", test_error)
 
-    b = mcallester_bound(alpha_opt, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
+        b = mcallester_bound(alpha_opt, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
 
-    monitor.write(cfg.training.iter, end={"test-error": test_error, "train-time": t2-t1, f"{cfg.bound.type}-bound": b})
+        results["time"].append(t2-t1)
+        results[f"{cfg.bound.type}-bound"].append(b)
+        results["test-error"].append(test_error)
 
-    monitor.close()
+        monitor.write(cfg.training.iter, end={"test-error": test_error, "train-time": t2-t1, f"{cfg.bound.type}-bound": b})
+
+        monitor.close()
+
+    np.save(SAVE_DIR / "results.npy", results)
 
 if __name__ == "__main__":
     main()
