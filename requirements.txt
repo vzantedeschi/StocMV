@@ -1,0 +1,8 @@
+betaincder==0.1.1
+hydra-core==0.11.3
+jax==0.2.11
+jaxlib==0.1.64
+tensorboardX==2.0
+tqdm==4.59.0
+
+
