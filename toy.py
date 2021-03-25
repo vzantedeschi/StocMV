@@ -26,8 +26,8 @@ train_x, train_y, test_x, test_y = load_normals(n_train, n_test, means=((-1, 0),
 
 d = train_x.shape[1]
 
-# predictors, num_preds = uniform_decision_stumps(M, d, train_x.min(0), train_x.max(0))
-predictors, num_preds = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
+predictors, num_preds = uniform_decision_stumps(M, d, train_x.min(0), train_x.max(0))
+# predictors, num_preds = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
 beta = jnp.ones(num_preds) * 0.1 # prior
 alpha = jrand.uniform(jkey, shape=(num_preds,), minval=0.01, maxval=2) # posterior

@@ -27,34 +27,12 @@ def b_bwd(res, g):
 
 regbetainc.defvjp(b_fwd, b_bwd)
 
-def gamma_implicit_grad(theta, alpha):
-
-    return - grad(gammainc, 0)(alpha, theta) * jnp.exp(-jnp.log(gamma.pdf(theta, alpha)))
-
-@custom_vjp
 def dirichlet_sampler(alpha, key):
 
     theta = vmap(jrand.gamma, (None, 0))(key, alpha) # draw from Gamma
     theta /= sum(theta) # now theta is drawn from Dirichlet
 
     return theta
-
-def d_fwd(alpha, key):
-    # import pdb;pdb.set_trace()
-
-    theta = vmap(jrand.gamma, (None, 0))(key, alpha) # draw from Gamma
-    theta /= sum(theta) # now theta is drawn from Dirichlet
-
-    der_alpha = vmap(gamma_implicit_grad)(theta, alpha)
-
-    return theta, (der_alpha)
-
-def d_bwd(res, g):
-    
-    dev_alpha = res # Gets residuals computed in d_fwd
-    return (dev_alpha * g, None)
-
-dirichlet_sampler.defvjp(d_fwd, d_bwd)
 
 # Kullback-Leibler divergence between two Dirichlets
 def KL(alpha, beta, eps=1e-8):
