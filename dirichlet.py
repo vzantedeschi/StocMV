@@ -35,16 +35,19 @@ def dirichlet_sampler(alpha, key):
     return theta
 
 # Kullback-Leibler divergence between two Dirichlets
-def KL(alpha, beta, eps=1e-8):
+def KL(alpha, beta):
     
-    res = gammaln(jnp.sum(alpha) + eps) - jnp.sum(gammaln(alpha + eps))
-    res -= gammaln(jnp.sum(beta) + eps) - jnp.sum(gammaln(beta + eps))
-    res += jnp.sum((alpha - beta) * (digamma(alpha + eps) - digamma(jnp.sum(alpha) + eps)))
+    a = jnp.exp(alpha)
+    b = jnp.exp(beta)
+
+    res = gammaln(jnp.sum(a)) - jnp.sum(gammaln(a))
+    res -= gammaln(jnp.sum(b)) - jnp.sum(gammaln(b))
+    res += jnp.sum((a - b) * (digamma(a) - digamma(jnp.sum(a))))
 
     return res
 
 # 01-loss applied to dataset
-def risk(alpha, predictors, sample, loss=None, eps=1e-8):
+def risk(alpha, predictors, sample, loss=None):
 
     x, y = sample
     y_target = y[..., None]
@@ -52,10 +55,10 @@ def risk(alpha, predictors, sample, loss=None, eps=1e-8):
     y_pred = predictors(x)
     # import pdb; pdb.set_trace()
 
-    correct = jnp.where(y_pred == y_target, alpha, 0.).sum(1)
-    wrong = jnp.where(y_pred != y_target, alpha, 0.).sum(1)
+    correct = jnp.where(y_pred == y_target, jnp.exp(alpha), 0.).sum(1)
+    wrong = jnp.where(y_pred != y_target, jnp.exp(alpha), 0.).sum(1)
 
-    return sum([regbetainc(c+eps, w+eps, 0.5) for c, w in zip(correct, wrong)]) / len(x)
+    return sum([regbetainc(c, w, 0.5) for c, w in zip(correct, wrong)]) / len(x)
 
 def approximated_risk(alpha, predictors, sample, loss, key, eps=1e-8):
     
@@ -64,6 +67,6 @@ def approximated_risk(alpha, predictors, sample, loss, key, eps=1e-8):
 
     y_pred = predictors(x)
 
-    theta = dirichlet_sampler(alpha, key)
+    theta = dirichlet_sampler(jnp.exp(alpha), key)
 
     return loss(y_target, y_pred, theta).mean()

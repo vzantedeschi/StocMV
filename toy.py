@@ -13,7 +13,8 @@ from predictors import uniform_decision_stumps, custom_decision_stumps
 
 from time import time
 
-n_train, n_test = 10, 100
+iters = 100
+n_train, n_test = 100, 100
 delta = 0.01
 M = 6
 rnd_seed = 17032021
@@ -26,11 +27,12 @@ train_x, train_y, test_x, test_y = load_normals(n_train, n_test, means=((-1, 0),
 
 d = train_x.shape[1]
 
-predictors, num_preds = uniform_decision_stumps(M, d, train_x.min(0), train_x.max(0))
-# predictors, num_preds = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
+# predictors, num_preds = uniform_decision_stumps(M, d, train_x.min(0), train_x.max(0))
+predictors, num_preds = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
-beta = jnp.ones(num_preds) * 0.1 # prior
-alpha = jrand.uniform(jkey, shape=(num_preds,), minval=0.01, maxval=2) # posterior
+# use exp(log(alpha)) for numerical stability
+beta = jnp.log(jnp.ones(num_preds) * 0.1) # prior
+alpha = jnp.log(jrand.uniform(jkey, shape=(num_preds,), minval=0.01, maxval=2)) # posterior
 
 test_error = risk(alpha, predictors, (test_x, test_y))
 print("Initial test error:", test_error)
@@ -49,12 +51,24 @@ mcallester_bound(alpha, beta, delta, predictors, (train_x, train_y), verbose=Tru
 
 # print("Optimized test error:", test_error)
 
+print("Optimize only sigmoid empirical risk")
+t1 = time()
+alpha_appr = batch_gradient_descent(approximated_risk, alpha, (predictors, (train_x, train_y), sigmoid_loss, jkey), lr=1, num_iters=iters)
+t2 = time()
+print(f"{t2-t1}s for {iters} iterations")
+
+test_error = risk(alpha_appr, predictors, (test_x, test_y))
+
+print("Optimized test error:", test_error)
+
+mcallester_bound(alpha_appr, beta, delta, predictors, (train_x, train_y), verbose=True)
+
 print("Optimize only empirical risk")
 t1 = time()
-alpha_err = batch_gradient_descent(approximated_risk, alpha, (predictors, (train_x, train_y), sigmoid_loss, jkey), lr=0.1, num_iters=2000)
+alpha_err = batch_gradient_descent(risk, alpha, (predictors, (train_x, train_y)), lr=1, num_iters=iters)
 t2 = time()
-print(f"{t2-t1}s for 10 iterations")
-# import pdb; pdb.set_trace()
+print(f"{t2-t1}s for {iters} iterations")
+
 test_error = risk(alpha_err, predictors, (test_x, test_y))
 
 print("Optimized test error:", test_error)
