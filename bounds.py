@@ -2,18 +2,14 @@ import jax.numpy as jnp
 
 from dirichlet import *
 
-def mcallester_bound(alpha, beta, delta, predictors, data, loss=None, key=None, verbose=False):
+def mcallester_bound(data, alpha, cost, beta, delta, params, verbose=False):
 
     n = len(data[0])
     
     kl = KL(alpha, beta)
     const = jnp.log(2 * (n**0.5) / delta)
 
-    if loss is None:
-        r = risk(alpha, predictors, data) # compute risk of 01-loss
-
-    else: # compute risk for the given loss
-        r = approximated_risk(alpha, predictors, data, loss=loss, key=key)
+    r = cost(data, alpha, *params) # compute risk of 01-loss
 
     bound = r + ((kl + const) / 2 / n)**0.5
 

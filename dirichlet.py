@@ -14,8 +14,12 @@ from betaincder import betainc, betaincderp, betaincderq
 @custom_vjp
 def regbetainc(p, q, x):
 
-    b = betainc(x, p, q)
-    return b
+    if p == 0.:
+        return 1.
+    elif q == 0.:
+        return 0.
+    else:
+        return betainc(x, p, q)
 
 def b_fwd(p, q, x):
 
@@ -48,25 +52,19 @@ def KL(alpha, beta):
     return res
 
 # 01-loss applied to dataset
-def risk(alpha, predictors, sample, eps=1e-8):
+def risk(data, alpha):
 
-    x, y = sample
-    y_target = y[..., None]
+    _, y_target, y_pred = data
 
-    y_pred = predictors(x)
-
-    correct = jnp.where(y_pred == y_target, jnp.exp(alpha), 0.).sum(1) + eps
-    wrong = jnp.where(y_pred != y_target, jnp.exp(alpha), 0.).sum(1) + eps
+    correct = jnp.where(y_pred == y_target, jnp.exp(alpha), 0.).sum(1)
+    wrong = jnp.where(y_pred != y_target, jnp.exp(alpha), 0.).sum(1)
 
     s = [regbetainc(c, w, 0.5) for c, w in zip(correct, wrong)]
-    return sum(s) / len(x)
+    return sum(s) / len(y_target)
 
-def approximated_risk(alpha, predictors, sample, loss, key, eps=1e-8):
-    
-    x, y = sample
-    y_target = y[..., None]
+def approximated_risk(data, alpha, loss, key, eps=1e-8):
 
-    y_pred = predictors(x)
+    _, y_target, y_pred = data
 
     theta = dirichlet_sampler(jnp.exp(alpha), key)
 

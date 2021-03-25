@@ -51,29 +51,33 @@ def main(cfg):
         beta = jnp.log(jnp.ones(cfg.model.M) * cfg.model.prior) # prior
         alpha = jnp.log(jrand.uniform(jkey, shape=(cfg.model.M,), minval=0.01, maxval=2)) # posterior
 
+        # get voter predictions
+        train_data = train_x, train_y[..., None], predictors(train_x)
+        test_data = test_x, test_y[..., None], predictors(test_x)
+
         # init train-eval monitoring 
         monitor = MonitorMV(SAVE_DIR)
 
         if cfg.training.risk == "exact":
 
             print("Optimize empirical risk")
-            cost, params = risk, (predictors, (train_x, train_y))
+            cost, params = risk, ()
 
         elif cfg.training.risk == "MC":
 
             print("Optimize empirical sigmoid risk")
-            cost, params = approximated_risk, (predictors, (train_x, train_y), sigmoid_loss, jkey)
+            cost, params = approximated_risk, (sigmoid_loss, jkey)
 
         t1 = time()
-        alpha_opt = batch_gradient_descent(cost, alpha, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
+        alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
         t2 = time()
         print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        test_error = float(risk(alpha_opt, predictors, (test_x, test_y)))
+        test_error = float(risk(test_data, alpha_opt))
 
         print(f"Test error: {test_error}")
 
-        b = float(mcallester_bound(alpha_opt, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True))
+        b = float(mcallester_bound(train_data, alpha_opt, risk, beta, cfg.bound.delta, (), verbose=True))
 
         results["time"].append(t2-t1)
         results[f"{cfg.bound.type}-bound"].append(b)
