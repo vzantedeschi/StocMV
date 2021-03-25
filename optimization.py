@@ -1,20 +1,26 @@
+import numpy as np
 import jax.numpy as jnp
 
 from jax import grad, jit
 from jax.experimental.optimizers import adam
 
+from tqdm import tqdm
+
 def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000, monitor=None):
 
     grad_alpha = grad(cost, argnums=0)
 
-    for i in range(num_iters):
+    pbar = tqdm(range(num_iters))
+    for i in pbar:
         
         g = grad_alpha(alpha, *params)
         alpha -= lr * g
-        # alpha = jnp.clip(alpha, 0)
+        obj = float(cost(alpha, *params)) 
+
+        pbar.set_description(f"objective {obj}")
 
         if monitor:
-            monitor.write_all(i, jnp.exp(alpha), g, train={"objective": cost(alpha, *params)})
+            monitor.write_all(i, jnp.exp(alpha), g, train={"objective": obj})
 
     return alpha
 

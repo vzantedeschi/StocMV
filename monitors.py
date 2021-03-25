@@ -11,15 +11,14 @@ class MonitorMV():
         self.writer = SummaryWriter(logdir)
 
     def write_all(self, it, alpha, grad, **metrics):
-
         self.writer.add_scalars('variables/alpha', 
             { 
-             "l2": jlin.norm(alpha, ord=2),
+             "l2": float(jlin.norm(alpha, ord=2)),
              }, it)
 
         self.writer.add_scalars('variables/gradient', 
             { 
-             "l2": jlin.norm(grad, ord=2),
+             "l2": float(jlin.norm(grad, ord=2)),
              }, it)
 
         self.write(it, **metrics)

@@ -19,6 +19,6 @@ def mcallester_bound(alpha, beta, delta, predictors, data, loss=None, key=None, 
 
     if verbose:
         print(f"Empirical risk={r}, KL={kl}, const={const}")
-        print(f"Bound={bound}")
+        print(f"Bound={bound}\n")
 
     return bound 

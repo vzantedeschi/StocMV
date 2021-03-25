@@ -18,7 +18,7 @@ from monitors import MonitorMV
 from optimization import batch_gradient_descent
 from predictors import uniform_decision_stumps, custom_decision_stumps
 
-@hydra.main(config_name='config/toy.yaml')
+@hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
     np.random.seed(cfg.training.seed)
@@ -31,7 +31,7 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve())
 
-    n_values = [1, 10, 100, 500, 1000]
+    n_values = [10, 100, 300, 500]
     results = {"time": [], f"{cfg.bound.type}-bound": [], "test-error": [], "n-values": n_values}
     for n in n_values:
 
@@ -69,11 +69,11 @@ def main(cfg):
         t2 = time()
         print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        test_error = risk(alpha_opt, predictors, (test_x, test_y))
+        test_error = float(risk(alpha_opt, predictors, (test_x, test_y)))
 
-        print("Optimized test error:", test_error)
+        print(f"Test error: {test_error}")
 
-        b = mcallester_bound(alpha_opt, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
+        b = float(mcallester_bound(alpha_opt, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True))
 
         results["time"].append(t2-t1)
         results[f"{cfg.bound.type}-bound"].append(b)
