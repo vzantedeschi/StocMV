@@ -21,4 +21,4 @@ def custom_decision_stumps(thresholds, signs):
 
     stumps = lambda x: stumps_predict(x, thresholds, signs.reshape(-1))
 
-    return stumps, np.prod(thresholds.shape)
+    return stumps, int(np.prod(thresholds.shape))

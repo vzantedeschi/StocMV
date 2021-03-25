@@ -72,30 +72,25 @@ def main(cfg):
 
     if cfg.training.risk == "exact":
 
-        print("Optimize only empirical risk")
-        t1 = time()
-        alpha_err = batch_gradient_descent(risk, alpha, (predictors, (train_x, train_y)), lr=cfg.training.lr, num_iters=cfg.training.iter, monitor=monitor)
-        t2 = time()
-        print(f"{t2-t1}s for {cfg.training.iter} iterations")
+        print("Optimize empirical risk")
+        cost, params = risk, (predictors, (train_x, train_y))
 
-        test_error = risk(alpha_err, predictors, (test_x, test_y))
-
-        print("Optimized test error:", test_error)
-
-        b = mcallester_bound(alpha_err, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
 
     elif cfg.training.risk == "MC":
-        print("Optimize only sigmoid empirical risk")
-        t1 = time()
-        alpha_appr = batch_gradient_descent(approximated_risk, alpha, (predictors, (train_x, train_y), sigmoid_loss, jkey), lr=cfg.training.lr, num_iters=cfg.training.iter, monitor=monitor)
-        t2 = time()
-        print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        test_error = risk(alpha_appr, predictors, (test_x, test_y))
+        print("Optimize empirical sigmoid risk")
+        cost, params = approximated_risk, (predictors, (train_x, train_y), sigmoid_loss, jkey)
 
-        print("Optimized test error:", test_error)
+    t1 = time()
+    alpha_opt = batch_gradient_descent(cost, alpha, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
+    t2 = time()
+    print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        b = mcallester_bound(alpha_appr, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
+    test_error = risk(alpha_opt, predictors, (test_x, test_y))
+
+    print("Optimized test error:", test_error)
+
+    b = mcallester_bound(alpha_opt, beta, cfg.bound.delta, predictors, (train_x, train_y), verbose=True)
 
     monitor.write(cfg.training.iter, end={"test-error": test_error, "train-time": t2-t1, f"{cfg.bound.type}-bound": b})
 
