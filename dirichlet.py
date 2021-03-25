@@ -13,6 +13,7 @@ from betaincder import betainc, betaincderp, betaincderq
 # regularized incomplete beta function and its forward and backward passes
 @custom_vjp
 def regbetainc(p, q, x):
+
     b = betainc(x, p, q)
     return b
 
@@ -47,18 +48,18 @@ def KL(alpha, beta):
     return res
 
 # 01-loss applied to dataset
-def risk(alpha, predictors, sample, loss=None):
+def risk(alpha, predictors, sample, eps=1e-8):
 
     x, y = sample
     y_target = y[..., None]
 
     y_pred = predictors(x)
-    # import pdb; pdb.set_trace()
 
-    correct = jnp.where(y_pred == y_target, jnp.exp(alpha), 0.).sum(1)
-    wrong = jnp.where(y_pred != y_target, jnp.exp(alpha), 0.).sum(1)
+    correct = jnp.where(y_pred == y_target, jnp.exp(alpha), 0.).sum(1) + eps
+    wrong = jnp.where(y_pred != y_target, jnp.exp(alpha), 0.).sum(1) + eps
 
-    return sum([regbetainc(c, w, 0.5) for c, w in zip(correct, wrong)]) / len(x)
+    s = [regbetainc(c, w, 0.5) for c, w in zip(correct, wrong)]
+    return sum(s) / len(x)
 
 def approximated_risk(alpha, predictors, sample, loss, key, eps=1e-8):
     

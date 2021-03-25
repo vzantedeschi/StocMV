@@ -1,0 +1,19 @@
+model:
+  M: 10 # number of predictors, is stumps: 2*M per dimension
+  prior: 0.1 # param of the Dirichlet prior
+  pred: "stumps-uniform" # or stumps-optimal
+
+training:
+  seed: 23032021
+  lr: 0.5
+  iter: 10
+  risk: "exact" # or MC
+
+dataset:
+  distr: normals # or moons
+  N_train: 200 # number of training points
+  N_test: 1000 # number of test points
+
+bound:
+  delta: 0.01
+  type: "mcallester"

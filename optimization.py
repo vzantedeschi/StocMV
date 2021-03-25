@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from jax import grad, jit
 from jax.experimental.optimizers import adam
 
-def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000):
+def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000, monitor=None):
 
     grad_alpha = grad(cost, argnums=0)
 
@@ -11,10 +11,10 @@ def batch_gradient_descent(cost, alpha, params, lr=0.1, num_iters=1000):
         
         g = grad_alpha(alpha, *params)
         alpha -= lr * g
-        alpha = jnp.clip(alpha, 0)
+        # alpha = jnp.clip(alpha, 0)
 
-        if i % 100 == 0:
-            print(f"alpha={alpha}, objective={cost(alpha, *params)}")
+        if monitor:
+            monitor.write_all(i, jnp.exp(alpha), g, train={"objective": cost(alpha, *params)})
 
     return alpha
 

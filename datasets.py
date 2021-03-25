@@ -37,3 +37,12 @@ def load_moons(n_train, n_test, noise=0.05, normalize=True):
         test_x = scaler.transform(test_x)
 
     return train_x, train_y, test_x, test_y
+
+DATASETS = {
+    "normals": load_normals,
+    "moons": load_moons
+}
+
+def load(name, n_train, n_test, **kwargs):
+
+    return DATASETS[name](n_train, n_test, **kwargs)

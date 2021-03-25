@@ -1,3 +1,5 @@
+import jax.numpy as jnp
+
 from dirichlet import *
 
 def mcallester_bound(alpha, beta, delta, predictors, data, loss=None, key=None, verbose=False):
