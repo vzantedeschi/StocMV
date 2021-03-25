@@ -31,7 +31,7 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve())
 
-    n_values = [10, 100, 300, 500]
+    n_values = [10, 100]
     results = {"time": [], f"{cfg.bound.type}-bound": [], "test-error": [], "n-values": n_values}
     for n in n_values:
 
@@ -60,13 +60,13 @@ def main(cfg):
 
         if cfg.training.risk == "exact":
 
-            print("Optimize empirical risk")
-            cost, params = risk, ()
+            print("Optimize McAllester bound with 01-loss")
+            cost, params = mcallester_bound, (risk, beta, cfg.bound.delta, ())
 
         elif cfg.training.risk == "MC":
 
-            print("Optimize empirical sigmoid risk")
-            cost, params = approximated_risk, (sigmoid_loss, jkey)
+            print("Optimize McAllester bound with sigmoid loss")
+            cost, params = mcallester_bound, (approximated_risk, beta, cfg.bound.delta, (sigmoid_loss, jkey))
 
         t1 = time()
         alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)

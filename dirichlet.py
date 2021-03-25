@@ -67,5 +67,5 @@ def approximated_risk(data, alpha, loss, key, eps=1e-8):
     _, y_target, y_pred = data
 
     theta = dirichlet_sampler(jnp.exp(alpha), key)
-
+    # import pdb; pdb.set_trace()
     return loss(y_target, y_pred, theta).mean()
