@@ -3,7 +3,7 @@ import jax.numpy as jnp
 from dirichlet import *
 from utils import kl_inv
 
-def mcallester_bound(data, alpha, cost, beta, delta, params, verbose=False):
+def mcallester_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=False):
 
     n = len(data[0])
     
@@ -17,9 +17,9 @@ def mcallester_bound(data, alpha, cost, beta, delta, params, verbose=False):
         print(f"Empirical risk={r}, KL={kl}, const={const}")
         print(f"Bound={bound}\n")
 
-    return bound 
+    return coeff * bound 
 
-def seeger_bound(data, alpha, cost, beta, delta, params, verbose=False):
+def seeger_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=False):
 
     n = len(data[0])
     
@@ -33,7 +33,7 @@ def seeger_bound(data, alpha, cost, beta, delta, params, verbose=False):
         print(f"Empirical risk={r}, KL={kl}, const={const}")
         print(f"Bound={bound}\n")
 
-    return bound 
+    return coeff * bound 
 
 BOUNDS = {
     "mcallester": mcallester_bound,

@@ -62,7 +62,7 @@ def risk(data, alpha):
     s = [regbetainc(c, w, 0.5) for c, w in zip(correct, wrong)]
     return sum(s) / len(y_target)
 
-def approximated_risk(data, alpha, loss, key, eps=1e-8):
+def approximated_risk(data, alpha, loss, key):
 
     _, y_target, y_pred = data
 
