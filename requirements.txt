@@ -1,4 +1,5 @@
 betaincder==0.1.1
+cvxpy==1.1.11
 hydra-core==0.11.3
 jax==0.2.11
 jaxlib==0.1.64

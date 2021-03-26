@@ -25,69 +25,79 @@ def main(cfg):
     random.seed(cfg.training.seed)
     jkey = jrand.PRNGKey(cfg.training.seed)
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.training.risk}/{cfg.model.pred}/{cfg.dataset.distr}/prior={cfg.model.prior}/lr={cfg.training.lr}/seed={cfg.training.seed}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/prior={cfg.model.prior}/lr={cfg.training.lr}/seed={cfg.training.seed}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve())
 
-    n_values = [10, 100]
-    results = {"time": [], f"{cfg.bound.type}-bound": [], "test-error": [], "n-values": n_values}
-    for n in n_values:
+    if cfg.dataset.distr == "normals":
+        train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
 
-        if cfg.dataset.distr == "normals":
-            train_x, train_y, test_x, test_y = load(cfg.dataset.distr, n, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
+    else:
+        train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test)
 
-        else:
-            train_x, train_y, test_x, test_y = load(cfg.dataset.distr, n, cfg.dataset.N_test)
+    if cfg.model.pred == "stumps-uniform":
+        predictors, cfg.model.M = uniform_decision_stumps(cfg.model.M, 2, train_x.min(0), train_x.max(0))
 
-        if cfg.model.pred == "stumps-uniform":
-            predictors, cfg.model.M = uniform_decision_stumps(cfg.model.M, 2, train_x.min(0), train_x.max(0))
+    elif cfg.model.pred == "stumps-optimal":
+        predictors, cfg.model.M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
-        elif cfg.model.pred == "stumps-optimal":
-            predictors, cfg.model.M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
+    # use exp(log(alpha)) for numerical stability
+    beta = jnp.log(jnp.ones(cfg.model.M) * cfg.model.prior) # prior
+    alpha = jnp.log(jrand.uniform(jkey, shape=(cfg.model.M,), minval=0.01, maxval=2)) # posterior
 
-        # use exp(log(alpha)) for numerical stability
-        beta = jnp.log(jnp.ones(cfg.model.M) * cfg.model.prior) # prior
-        alpha = jnp.log(jrand.uniform(jkey, shape=(cfg.model.M,), minval=0.01, maxval=2)) # posterior
+    # get voter predictions
+    train_data = train_x, train_y[..., None], predictors(train_x)
+    test_data = test_x, test_y[..., None], predictors(test_x)
 
-        # get voter predictions
-        train_data = train_x, train_y[..., None], predictors(train_x)
-        test_data = test_x, test_y[..., None], predictors(test_x)
+    # init train-eval monitoring 
+    monitor = MonitorMV(SAVE_DIR)
 
-        # init train-eval monitoring 
-        monitor = MonitorMV(SAVE_DIR)
+    if cfg.training.opt_bound:
+
+        print(f"Optimize {cfg.bound.type} bound")
 
         if cfg.training.risk == "exact":
 
-            print("Optimize McAllester bound with 01-loss")
-            cost, params = mcallester_bound, (risk, beta, cfg.bound.delta, ())
+            print("Using 01-loss")
+            cost, params = BOUNDS[cfg.bound.type], (risk, beta, cfg.bound.delta, ())
 
         elif cfg.training.risk == "MC":
 
-            print("Optimize McAllester bound with sigmoid loss")
-            cost, params = mcallester_bound, (approximated_risk, beta, cfg.bound.delta, (sigmoid_loss, jkey))
+            print("Using sigmoid loss")
+            cost, params = BOUNDS[cfg.bound.type], (approximated_risk, beta, cfg.bound.delta, (sigmoid_loss, jkey))
+    
+    else:
 
-        t1 = time()
-        alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
-        t2 = time()
-        print(f"{t2-t1}s for {cfg.training.iter} iterations")
+        print(f"Optimize train risk")
 
-        test_error = float(risk(test_data, alpha_opt))
+        if cfg.training.risk == "exact":
 
-        print(f"Test error: {test_error}")
+            print("Using 01-loss")
+            cost, params = risk, ()
 
-        b = float(mcallester_bound(train_data, alpha_opt, risk, beta, cfg.bound.delta, (), verbose=True))
+        elif cfg.training.risk == "MC":
 
-        results["time"].append(t2-t1)
-        results[f"{cfg.bound.type}-bound"].append(b)
-        results["test-error"].append(test_error)
+            print("Using sigmoid loss")
+            cost, params = approximated_risk, (sigmoid_loss, jkey)
 
-        monitor.write(cfg.training.iter, end={"test-error": test_error, "train-time": t2-t1, f"{cfg.bound.type}-bound": b})
+    t1 = time()
+    alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
+    t2 = time()
+    print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        monitor.close()
+    test_error = float(risk(test_data, alpha_opt))
 
-    np.save(SAVE_DIR / "results.npy", results)
+    print(f"Test error: {test_error}")
+
+    b = float(BOUNDS[cfg.bound.type](train_data, alpha_opt, risk, beta, cfg.bound.delta, (), verbose=True))
+
+    monitor.write(cfg.training.iter, end={"test-error": test_error, "train-time": t2-t1, f"{cfg.bound.type}-bound": b})
+
+    monitor.close()
+
+    np.save(SAVE_DIR / "alpha.npy", np.exp(alpha_opt))
 
 if __name__ == "__main__":
     main()

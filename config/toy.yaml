@@ -8,10 +8,11 @@ training:
   lr: 0.5
   iter: 1e3
   risk: "exact" # or MC
+  opt_bound: True
 
 dataset:
   distr: normals # or moons
-  N_train: 200 # number of training points per class
+  N_train: 100 # number of training points per class
   N_test: 1000 # number of test points per class
 
 bound:
