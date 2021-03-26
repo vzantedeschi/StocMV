@@ -1,7 +1,7 @@
 import jax.numpy as jnp
 import numpy as np
 
-from jax import vmap, custom_vjp, grad
+from jax import vmap, custom_vjp, grad, jit
 from jax.scipy.special import gammaln, digamma, gammainc
 from jax.scipy.stats import gamma
 from jax import random as jrand
@@ -66,6 +66,6 @@ def approximated_risk(data, alpha, loss, key, eps=1e-8):
 
     _, y_target, y_pred = data
 
-    theta = dirichlet_sampler(jnp.exp(alpha), key)
+    theta = jit(dirichlet_sampler)(jnp.exp(alpha), key)
     # import pdb; pdb.set_trace()
-    return loss(y_target, y_pred, theta).mean()
+    return jit(loss)(y_target, y_pred, theta).mean()
