@@ -6,7 +6,7 @@ model:
 training:
   seed: 23032021
   lr: 0.5
-  iter: 1e3
+  iter: 2e3
   risk: "exact" # or MC
   opt_bound: True
 
