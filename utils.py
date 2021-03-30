@@ -11,20 +11,18 @@ def kl(q, p):
 def kl_inv(q, err):
 
     # bijection optimization
-    p_max = 1.0
-    p_min = q
+    p_max, p_min = 1.0, q
 
     for _ in range(1000):
         
         p = (p_min+p_max)/2.
         p_kl = kl(q, p)
 
-        if p_kl == err or (p_max-p_min)/2. < 1e-9:
+        if jnp.isclose(p_kl, err) or (p_max-p_min)/2. < 1e-8:
             return p
 
         if p_kl > err:
             p_max = p
-
         else:
             p_min = p
 
