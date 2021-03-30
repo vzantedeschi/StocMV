@@ -25,12 +25,10 @@ def main(cfg):
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
     
-    test_errors, train_errors, bounds = [], [], []
     print("results will be saved in:", SAVE_DIR.resolve())
     
     monitor = None
-
-    
+    test_errors, train_errors, bounds = [], [], []
     for i in range(10):
         
         np.random.seed(cfg.training.seed+i)
@@ -92,14 +90,8 @@ def main(cfg):
         test_errors.append(test_error)
         train_errors.append(train_error)
         bounds.append(b)
-        # monitor.write(cfg.training.iter, end={"test-error": test_error, "train-time": t2-t1, f"{cfg.bound.type}-bound": b})
 
-        # monitor.close()
-
-        # np.save(SAVE_DIR / "alpha.npy", np.exp(alpha_opt))
-        del alpha, alpha_opt
-
-    np.save(SAVE_DIR / "t-err-b.npy", {"train-error": np.mean(train_errors),"test-error": np.mean(test_errors), cfg.bound.type: np.mean(bounds)})
+    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
 
 if __name__ == "__main__":
     main()

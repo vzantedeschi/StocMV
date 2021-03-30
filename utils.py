@@ -4,17 +4,31 @@ from jax import vmap, custom_vjp, grad
 
 import cvxpy as cvx
 
+def kl(q, p):
+    return q * jnp.log(q/p) + (1-q) * jnp.log((1-q)/(1-p))
+
 @custom_vjp
 def kl_inv(q, err):
 
-    p = cvx.Variable(shape=1)
+    # bijection optimization
+    p_max = 1.0
+    p_min = q
 
-    prob = cvx.Problem(
-        cvx.Maximize(p),
-        [cvx.kl_div(q, p) + cvx.kl_div((1 - q),(1 - p)) <= err])
-    prob.solve()
+    for _ in range(1000):
+        
+        p = (p_min+p_max)/2.
+        p_kl = kl(q, p)
 
-    return p.value[0]
+        if p_kl == err or (p_max-p_min)/2. < 1e-9:
+            return p
+
+        if p_kl > err:
+            p_max = p
+
+        else:
+            p_min = p
+
+    return p
 
 def kli_fwd(q, err):
 
