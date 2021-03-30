@@ -11,13 +11,13 @@ def mcallester_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=Fa
     const = jnp.log(2 * (n**0.5) / delta)
     r = cost(data, alpha, *params)
 
-    bound = r + ((kl + const) / 2 / n)**0.5
+    bound = coeff * (r + ((kl + const) / 2 / n)**0.5)
 
     if verbose:
         print(f"Empirical risk={r}, KL={kl}, const={const}")
         print(f"Bound={bound}\n")
 
-    return coeff * bound 
+    return bound 
 
 def seeger_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=False):
 
@@ -27,13 +27,13 @@ def seeger_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=False)
     const = jnp.log(2 * (n**0.5) / delta)
     r = cost(data, alpha, *params)
 
-    bound = kl_inv(r, (kl + const) / n)
+    bound = coeff * kl_inv(r, (kl + const) / n)
 
     if verbose:
         print(f"Empirical risk={r}, KL={kl}, const={const}")
         print(f"Bound={bound}\n")
 
-    return coeff * bound 
+    return bound 
 
 BOUNDS = {
     "mcallester": mcallester_bound,
