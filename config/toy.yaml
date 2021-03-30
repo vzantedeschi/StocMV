@@ -16,5 +16,5 @@ dataset:
   N_test: 1000 # number of test points per class
 
 bound:
-  delta: 0.01
+  delta: 0.05
   type: "mcallester"

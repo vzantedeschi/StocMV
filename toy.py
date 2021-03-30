@@ -48,7 +48,9 @@ def main(cfg):
 
         # use exp(log(alpha)) for numerical stability
         beta = jnp.log(jnp.ones(M) * cfg.model.prior) # prior
-        alpha = jnp.log(jrand.uniform(jkey, shape=(M,), minval=0.01, maxval=2)) # posterior
+        alpha = jnp.array(beta, copy=True)
+        
+        # alpha = jnp.log(jrand.uniform(jkey, shape=(M,), minval=0.01, maxval=2)) # posterior
 
         if cfg.training.opt_bound:
 

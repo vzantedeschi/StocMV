@@ -30,7 +30,7 @@ def main(cfg):
     
     monitor = None
     test_errors, train_errors, bounds = [], [], []
-    for i in range(2, 10):
+    for i in range(10):
         
         np.random.seed(cfg.training.seed+i)
         random.seed(cfg.training.seed+i)
@@ -49,6 +49,7 @@ def main(cfg):
             predictors, M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
         beta = jnp.log(jnp.ones(M) / M) # uniform prior
+        alpha = jnp.array(beta, copy=True)
         
         loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk)
         if cfg.training.opt_bound:
@@ -66,9 +67,9 @@ def main(cfg):
             cost, params = cat.risk_upper_bound, (loss,)
     
 
-        alpha = jrand.uniform(jkey, shape=(M,), minval=0, maxval=10) # posterior
-        alpha /= alpha.sum() # has to sum to 1
-        alpha = jnp.log(alpha)
+        # alpha = jrand.uniform(jkey, shape=(M,), minval=0, maxval=10) # posterior
+        # alpha /= alpha.sum() # has to sum to 1
+        # alpha = jnp.log(alpha)
 
         # get voter predictions
         train_data = train_x, train_y[..., None], predictors(train_x)

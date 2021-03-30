@@ -7,7 +7,7 @@ do
 	do
 	    for b in seeger mcallester
 	    do
-		    python3 toy.py training.risk=$r dataset.distr=$d model.pred=stumps-uniform bound.type=$b model.M=$m dataset.N_train=50
+		    python3 toy.py training.risk=$r dataset.distr=$d model.pred=stumps-uniform bound.type=$b model.M=$m dataset.N_train=100
 	    done
         done
     done
