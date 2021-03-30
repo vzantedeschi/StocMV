@@ -21,7 +21,8 @@ from predictors import uniform_decision_stumps, custom_decision_stumps
 @hydra.main(config_path='config/toy_oracle.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/seed={cfg.training.seed}-{cfg.training.seed+10}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/seed={cfg.training.seed}-{cfg.training.seed+10}"
+
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
     
@@ -29,7 +30,7 @@ def main(cfg):
     
     monitor = None
     test_errors, train_errors, bounds = [], [], []
-    for i in range(10):
+    for i in range(2, 10):
         
         np.random.seed(cfg.training.seed+i)
         random.seed(cfg.training.seed+i)
