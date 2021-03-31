@@ -3,17 +3,24 @@ from tensorboardX import SummaryWriter
 import jax.numpy.linalg as jlin
 class MonitorMV():
 
-    def __init__(self, logdir=None):
+    def __init__(self, logdir, normalize=False):
 
         super(MonitorMV, self).__init__()
 
         self.logdir = logdir
         self.writer = SummaryWriter(logdir)
+        self.normalize = normalize
 
     def write_all(self, it, alpha, grad, **metrics):
+
+        if self.normalize:
+            alpha_norm = jlin.norm(alpha / alpha.sum(), ord=2)
+        else:
+            alpha_norm = jlin.norm(alpha, ord=2)
+
         self.writer.add_scalars('variables/alpha', 
             { 
-             "l2": float(jlin.norm(alpha, ord=2)),
+             "l2": float(alpha_norm),
              }, it)
 
         self.writer.add_scalars('variables/gradient', 

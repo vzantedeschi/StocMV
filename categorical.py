@@ -5,7 +5,10 @@ from jax import jit
 def KL(alpha, beta):
 
     a = jnp.exp(alpha)
+    a /= a.sum()
+    
     b = jnp.exp(beta)
+    b /= b.sum()
 
     return (a * jnp.log(a / b)).sum()
 
