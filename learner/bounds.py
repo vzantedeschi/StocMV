@@ -1,15 +1,14 @@
-import jax.numpy as jnp
+import numpy as np
 
-from dirichlet import *
-from utils import kl_inv
+from core.kl_inv import klInvFunction
 
-def mcallester_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=False):
+def mcallester_bound(data, posterior, cost, prior, delta, cost_params, coeff=1, verbose=False):
 
     n = len(data[0])
     
-    kl = KL(alpha, beta)
-    const = jnp.log(2 * (n**0.5) / delta)
-    r = cost(data, alpha, *params)
+    kl = KL(posterior, prior)
+    const = np.log(2 * (n**0.5) / delta)
+    r = cost(data, posterior, *cost_params)
 
     bound = coeff * (r + ((kl + const) / 2 / n)**0.5)
 
@@ -19,13 +18,13 @@ def mcallester_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=Fa
 
     return bound 
 
-def seeger_bound(data, alpha, cost, beta, delta, params, coeff=1, verbose=False):
+def seeger_bound(data, posterior, cost, prior, delta, cost_params, coeff=1, verbose=False):
 
     n = len(data[0])
     
-    kl = KL(alpha, beta)
-    const = jnp.log(2 * (n**0.5) / delta)
-    r = cost(data, alpha, *params)
+    kl = KL(posterior, prior)
+    const = np.log(2 * (n**0.5) / delta)
+    r = cost(data, posterior, *cost_params)
 
     bound = coeff * kl_inv(r, (kl + const) / n)
 
