@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+
+import os
+import h5py
+import numpy as np
+import pandas as pd
+import random
+import warnings
+from argparse import ArgumentParser
+
+###############################################################################
+
+def get_label(example_label, label_1, label_m_1):
+    label = example_label[14]
+    label.loc[label == label_1] = 0
+    label.loc[label == label_m_1] = 1
+    label = label.astype(int)
+    label = label.to_numpy()
+    return label
+
+
+def get_example(example_label):
+    example = example_label.drop([14], axis=1)
+    example = pd.get_dummies(
+        example, columns=[1, 3, 5, 6, 7, 8, 9, 13]
+    )
+    example = example.to_numpy().astype(np.float32)
+    example_min_max = (example - example.min(axis=0))
+    example_min_max /= (example.max(axis=0) - example.min(axis=0))
+    return example_min_max
+
+
+def save(path, example_train, example_test, label_train, label_test):
+    dataset_file = h5py.File(path, "w")
+
+    dataset_file["x_train"] = example_train
+    dataset_file["y_train"] = label_train
+    dataset_file["x_test"] = example_test
+    dataset_file["y_test"] = label_test
+
+
+###############################################################################
+
+if __name__ == "__main__":
+
+    np.random.seed(42)
+    random.seed(42)
+    warnings.filterwarnings('ignore')
+
+    # We create the parser
+    arg_parser = ArgumentParser(description="generate the adult dataset")
+    arg_parser.add_argument(
+        "path", metavar="path", type=str,
+        help="path of the h5 dataset file"
+    )
+    arg_list = arg_parser.parse_args()
+    path = arg_list.path
+
+    if(not(os.path.exists("data-adult/"))):
+        raise Exception("The folder data-adult/ does not exist.")
+
+    example_label = pd.read_csv(
+        "data-adult/adult.data", sep=", ",
+        na_values="?", header=None)
+    example_label_test = pd.read_csv(
+        "data-adult/adult.test", sep=", ",
+        na_values="?", skiprows=[0], header=None)
+    example_label = example_label.dropna(axis=0, how="any")
+    example_label_test = example_label_test.dropna(axis=0, how="any")
+
+    label_train = get_label(example_label, "<=50K", ">50K")
+    label_test = get_label(example_label_test, "<=50K.", ">50K.")
+
+    example_label_train_test = example_label.append(example_label_test)
+    example_train_test = get_example(example_label_train_test)
+    example_train = example_train_test[:len(label_train), :]
+    example_test = example_train_test[len(label_train):, :]
+
+    save(path, example_train, example_test, label_train, label_test)

@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+
+import os
+import h5py
+import numpy as np
+import pandas as pd
+import random
+import warnings
+from argparse import ArgumentParser
+
+###############################################################################
+
+
+def get_label(example_label):
+    label = example_label[0]
+    label.loc[label == "e"] = 0
+    label.loc[label == "p"] = 1
+    label = label.to_numpy()
+    return label
+
+
+def get_example(example_label):
+    example_label = example_label.drop([0], axis=1)
+    example_label = pd.get_dummies(example_label)
+    example = example_label.to_numpy().astype(np.float32)
+    example_min_max = (example - example.min(axis=0))
+    example_min_max /= (example.max(axis=0) - example.min(axis=0))
+    return example_min_max
+
+
+def get_train_test(example, label, ratio_test):
+
+    size_test = int(ratio_test*len(example))
+
+    example_test = example[:size_test, :]
+    example_train = example[size_test:, :]
+    label_test = label[:size_test]
+    label_train = label[size_test:]
+
+    return example_train, example_test, label_train, label_test
+
+
+def shuffle(example, label):
+    permutation = np.arange(example.shape[0])
+    np.random.shuffle(permutation)
+    example = example[permutation, :]
+    label = label[permutation]
+    return example, label
+
+
+def save(path, example_train, example_test, label_train, label_test):
+    dataset_file = h5py.File(path, "w")
+
+    dataset_file["x_train"] = example_train
+    dataset_file["y_train"] = label_train
+    dataset_file["x_test"] = example_test
+    dataset_file["y_test"] = label_test
+
+
+###############################################################################
+
+
+if __name__ == "__main__":
+
+    np.random.seed(42)
+    random.seed(42)
+    warnings.filterwarnings('ignore')
+
+    # We create the parser
+    arg_parser = ArgumentParser(
+        description="generate the breast-cancer dataset")
+    arg_parser.add_argument(
+        "path", metavar="path", type=str,
+        help="path of the h5 dataset file")
+    arg_parser.add_argument(
+        "--test", metavar="test", default=0.05, type=float,
+        help="proportion of the test set")
+
+    arg_list = arg_parser.parse_args()
+    path = arg_list.path
+    ratio_test = arg_list.test
+
+    if(not(os.path.exists("data-mushroom/"))):
+        raise Exception("The folder data-mushroom/ does not exist.")
+
+    example_label = pd.read_csv(
+        "data-mushroom/agaricus-lepiota.data", sep=",", header=None)
+
+    label = get_label(example_label)
+    example = get_example(example_label)
+
+    example, label = shuffle(example, label)
+    (example_train, example_test, label_train, label_test) = get_train_test(
+        example, label, ratio_test)
+    save(path, example_train, example_test, label_train, label_test)
