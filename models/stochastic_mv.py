@@ -10,13 +10,16 @@ class MajorityVote(torch.nn.Module):
 
         super(MajorityVote, self).__init__()
 
+        assert all(prior > 0), "all prior parameters must be positive"
+
         self.prior = prior
         self.voters = voters
 
         if posterior is not None:
-            self.post = posterior
+            assert all(posterior > 0.), "all posterior parameters must be positive"
+            self.post = torch.log(posterior)
         else:
-            self.post = torch.nn.Parameter(torch.rand(prior.shape) * 2 + 1e-9, requires_grad=True)
+            self.post = torch.nn.Parameter(torch.log(torch.rand(prior.shape) * 2 + 1e-9), requires_grad=True)
         
         self.distribution = distr_dict[distr](self.post)
 
@@ -24,6 +27,13 @@ class MajorityVote(torch.nn.Module):
 
     def forward(self, x):
         return self.voters(x)
+
+    def risk(self, batch, loss=None):
+
+        if loss is not None:
+            return self.distribution.approximated_risk(batch, loss)
+
+        return self.distribution.risk(batch)
 
     def predict(self, X, num_draws=10):
         
@@ -33,6 +43,9 @@ class MajorityVote(torch.nn.Module):
         # return torch.argmax()
         pass
 
+    def KL(self):
+        return self.distribution.KL(self.prior)
+
 # ------------------------------------------------------------------------------- STUMPS
 # support only binary classification
 def stumps_predict(x, thresholds, signs):
@@ -41,12 +54,12 @@ def stumps_predict(x, thresholds, signs):
 
 def uniform_decision_stumps(M, d, min_v, max_v):
 
-    thresholds = np.linspace(min_v, max_v, M, endpoint=False, axis=-1) # get M evenly spaced thresholds in the interval [min_v, max_v] per dimension
+    thresholds = torch.from_numpy(np.linspace(min_v, max_v, M, endpoint=False, axis=-1)).float() # get M evenly spaced thresholds in the interval [min_v, max_v] per dimension
 
     sigs = torch.ones((d, M * 2))
     sigs[..., M:] = -1 # first M*d stumps return one class, last M*d return the other
 
-    stumps = lambda x: stumps_predict(x, torch.hstack((thresholds, thresholds)), sigs)
+    stumps = lambda x: stumps_predict(x, torch.cat((thresholds, thresholds), 1), sigs)
 
     return stumps, d * M * 2
 

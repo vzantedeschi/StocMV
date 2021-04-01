@@ -12,21 +12,17 @@ class MonitorMV():
         self.writer = SummaryWriter(logdir)
         self.normalize = normalize
 
-    def write_all(self, it, alpha, grad, **metrics):
+    def write_all(self, it, posterior, **metrics):
 
         if self.normalize:
-            alpha_norm = torch.norm(alpha / alpha.sum(), p=2)
+            p = posterior / posterior.sum()    
         else:
-            alpha_norm = torch.norm(alpha, p=2)
+            p = posterior
 
-        self.writer.add_scalars('variables/alpha', 
+        self.writer.add_scalars('variables/posterior', 
             { 
-             "l2": float(alpha_norm),
-             }, it)
-
-        self.writer.add_scalars('variables/gradient', 
-            { 
-             "l2": float(torch.norm(grad, p=2)),
+             "l2": torch.norm(p, p=2),
+             "l1": torch.norm(p, p=1),
              }, it)
 
         self.write(it, **metrics)

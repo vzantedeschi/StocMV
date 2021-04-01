@@ -3,11 +3,11 @@ import torch
 def kl(q, p):
     return q * torch.log(q/p) + (1-q) * torch.log((1-q)/(1-p))
 
-def kl_inv(q, epsilon, mode, nb_iter_max=1e3):
+def kl_inv(q, epsilon, mode, nb_iter_max=1000):
     # bijection optimization method
 
     assert mode in ["MIN", "MAX"]
-    assert q >= 0 and q <= 1
+    assert q > 0 and q < 1
     assert epsilon > 0.0
 
     if(mode == "MAX"):
@@ -20,7 +20,7 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1e3):
         p = (p_min+p_max)/2.
         p_kl = kl(q, p)
 
-        if np.isclose(p_kl, epsilon) or (p_max-p_min)/2. < 1e-9:
+        if torch.isclose(p_kl, epsilon) or (p_max-p_min)/2. < 1e-9:
             return p
 
         if mode == "MAX":
@@ -43,10 +43,7 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1e3):
 class klInvFunction(torch.autograd.Function):
 
     @staticmethod
-    def forward(ctx, q, epsilon, mode):
-        assert mode in ["MIN", "MAX"]
-        assert q.size == 1
-        assert epsilon.size == 1 and epsilon > 0.0
+    def forward(ctx, q, epsilon, mode="MAX"):
 
         ctx.save_for_backward(q, epsilon)
         out = kl_inv(q, epsilon, mode)

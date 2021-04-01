@@ -1,17 +1,18 @@
 import hydra
-
 from time import time
-
 from pathlib import Path
 
 import numpy as np
-import random
+import torch
 
-from learner.bounds import BOUNDS
-from data.datasets import load
+from torch.optim import Adam
+
+from core.bounds import BOUNDS
 from core.losses import sigmoid_loss
 from core.monitors import MonitorMV
+from core.optimization import train_batch
 from core.utils import deterministic
+from data.toy_datasets import load
 from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
 @hydra.main(config_path='config/toy.yaml')
@@ -41,50 +42,46 @@ def main(cfg):
         elif cfg.model.pred == "stumps-optimal":
             predictors, M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
+        train_x, train_y, test_x, test_y = torch.from_numpy(train_x).float(), torch.from_numpy(train_y).float(), torch.from_numpy(test_x).float(), torch.from_numpy(test_y).float()
+
         # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) * cfg.model.prior # prior
 
         model = MajorityVote(predictors, beta)
 
+        bound = None
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
+            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta)
 
-        if cfg.training.risk == "exact":
+        loss = None
+        if cfg.training.risk == "MC":
 
-            print("Using 01-loss")
-            cost, params = BOUNDS[cfg.bound.type], (model, cfg.bound.delta, ())
-
-        elif cfg.training.risk == "MC":
-
-            print("Using sigmoid loss")
-            cost, params = BOUNDS[cfg.bound.type], (model, cfg.bound.delta, (sigmoid_loss, ))
-        
-        else:
-            raise NotImplementedError
+            print("with approximated risk, using sigmoid loss")
+            loss = sigmoid_loss
 
         # get voter predictions
-        train_data = train_x, train_y[..., None], predictors(train_x)
-        test_data = test_x, test_y[..., None], predictors(test_x)
+        train_data = train_y.unsqueeze(1), predictors(train_x)
+        test_data = test_y.unsqueeze(1), predictors(test_x)
 
-        # init train-eval monitoring 
-        # monitor = None
         monitor = MonitorMV(SAVE_DIR)
+        optimizer = Adam(model.parameters(), lr=cfg.training.lr)
 
         t1 = time()
-        alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
+        train_batch(train_data, model, optimizer, bound=bound, loss=loss, nb_iter=cfg.training.iter, monitor=monitor)
         t2 = time()
         print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        test_error = float(diri.risk(test_data, alpha_opt))
-        train_error = float(diri.risk(train_data, alpha_opt))
+        test_error = model.risk(test_data)
+        train_error = model.risk(train_data)
 
-        print(f"Test error: {test_error}")
+        print(f"Test error: {test_error.item()}")
 
-        b = float(BOUNDS[cfg.bound.type](train_data, alpha_opt, diri.risk, beta, cfg.bound.delta, (), verbose=True))
+        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_error, cfg.bound.delta, verbose=True))
         
-        train_errors.append(train_error)
-        test_errors.append(test_error)
+        train_errors.append(train_error.item())
+        test_errors.append(test_error.item())
         bounds.append(b)
     
     np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})

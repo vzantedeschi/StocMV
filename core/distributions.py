@@ -2,7 +2,7 @@ import torch
 import numpy as np
 
 from torch.distributions.dirichlet import Dirichlet
-from torch.special import gammaln, digamma
+from torch import lgamma, digamma
 
 from betaincder import betainc, betaincderp, betaincderq
 
@@ -12,16 +12,15 @@ class BetaInc(torch.autograd.Function):
     @staticmethod
     def forward(ctx, p, q, x):
 
-        ctx.save_for_backward(p, q, x)
-
+        ctx.save_for_backward(p, q, torch.tensor(x))
         # deal with dirac distributions
         if p == 0.:
-            return 1. # for any x, cumulative = 1.
+            return torch.ones(1) # for any x, cumulative = 1.
 
         elif q == 0.:
-            return 0. # for any x > 0, cumulative = 0.
+            return torch.zeros(1) # for any x > 0, cumulative = 0.
     
-        return betainc(x, p, q)
+        return torch.tensor(betainc(x, p, q))
 
     @staticmethod
     def backward(ctx, grad):
@@ -31,40 +30,42 @@ class BetaInc(torch.autograd.Function):
 
         return grad * grad_p, grad * grad_q, None
 
-class DirichletCustom(Dirichlet):
+class DirichletCustom():
 
     def __init__(self, alpha):
 
-        super(DirichletCustom, self).__init__(concentration=alpha)
+        self.alpha = alpha
 
     # Kullback-Leibler divergence between two Dirichlets
     def KL(self, beta):
 
-        res = gammaln(self.concentration.sum()) - gammaln(self.concentration).sum()
-        res -= gammaln(beta.sum()) - gammaln(beta).sum()
-        res += torch.sum((self.concentration - beta) * (digamma(self.concentration) - digamma(self.concentration.sum())))
+        exp_alpha = torch.exp(self.alpha)
+        res = lgamma(exp_alpha.sum()) - lgamma(exp_alpha).sum()
+        res -= lgamma(beta.sum()) - lgamma(beta).sum()
+        res += torch.sum((exp_alpha - beta) * (digamma(exp_alpha) - digamma(exp_alpha.sum())))
 
         return res
 
     def risk(self, batch):
         # 01-loss applied to batch
 
-        _, y_target, y_pred = batch
+        y_target, y_pred = batch
+        exp_alpha = torch.exp(self.alpha)
 
-        correct = self.concentration[y_target == y_pred].sum(1)
-        wrong = self.concentration[y_target != y_pred].sum(1)
+        correct = torch.where(y_target == y_pred, exp_alpha, torch.zeros(1)).sum(1)
+        wrong = torch.where(y_target != y_pred, exp_alpha, torch.zeros(1)).sum(1)
 
-        s = torch.vmap(regbetainc)(correct, wrong, 0.5)
+        s = [BetaInc.apply(c, w, 0.5) for c, w in zip(correct, wrong)]
 
-        return s.mean()
+        return sum(s) / len(y_target)
 
     def approximated_risk(self, batch, loss, num_draws=10):
 
-        _, y_target, y_pred = batch
+        y_target, y_pred = batch
 
-        thetas = self.rsample(num_draws)
+        thetas = Dirichlet(torch.exp(self.alpha)).rsample((num_draws,))
 
-        return loss(y_target, y_pred, theta).mean()
+        return loss(y_target, y_pred, thetas).mean()
 
 class Categorical():
 
@@ -82,7 +83,7 @@ class Categorical():
 
         t = self.theta / self.theta.sum()
 
-        _, y_target, y_pred = batch
+        y_target, y_pred = batch
 
         return loss(y_target, y_pred, t).mean()
 
@@ -90,9 +91,9 @@ class Categorical():
 
         t = self.theta / self.theta.sum()
 
-        _, y_target, y_pred = batch
+        y_target, y_pred = batch
 
-        w_theta = t[y_pred != y_target].sum(1)
+        w_theta = torch.where(y_target != y_pred, t, torch.zeros(1)).sum(1)
 
         return (w_theta >= 0.5).mean()
 
