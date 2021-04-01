@@ -18,7 +18,7 @@ from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_d
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
-    NUM_TRIALS = 1
+    NUM_TRIALS = 10
     SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+NUM_TRIALS}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
