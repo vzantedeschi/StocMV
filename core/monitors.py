@@ -1,6 +1,7 @@
+import torch
+
 from tensorboardX import SummaryWriter
 
-import jax.numpy.linalg as jlin
 class MonitorMV():
 
     def __init__(self, logdir, normalize=False):
@@ -14,9 +15,9 @@ class MonitorMV():
     def write_all(self, it, alpha, grad, **metrics):
 
         if self.normalize:
-            alpha_norm = jlin.norm(alpha / alpha.sum(), ord=2)
+            alpha_norm = torch.norm(alpha / alpha.sum(), p=2)
         else:
-            alpha_norm = jlin.norm(alpha, ord=2)
+            alpha_norm = torch.norm(alpha, p=2)
 
         self.writer.add_scalars('variables/alpha', 
             { 
@@ -25,7 +26,7 @@ class MonitorMV():
 
         self.writer.add_scalars('variables/gradient', 
             { 
-             "l2": float(jlin.norm(grad, ord=2)),
+             "l2": float(torch.norm(grad, p=2)),
              }, it)
 
         self.write(it, **metrics)

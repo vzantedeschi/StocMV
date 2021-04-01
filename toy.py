@@ -7,32 +7,27 @@ from pathlib import Path
 import numpy as np
 import random
 
-import jax.numpy as jnp
-import jax.random as jrand
-
-from bounds import *
-from datasets import load
-import dirichlet as diri
-from loss import sigmoid_loss
-from monitors import MonitorMV
-from optimization import batch_gradient_descent
-from predictors import uniform_decision_stumps, custom_decision_stumps
+from learner.bounds import BOUNDS
+from data.datasets import load
+from core.losses import sigmoid_loss
+from core.monitors import MonitorMV
+from core.utils import deterministic
+from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+10}/"
+    NUM_TRIALS = 1
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+NUM_TRIALS}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
     
     train_errors, test_errors, bounds = [], [], []
-    for i in range(10):
+    for i in range(NUM_TRIALS):
         
-        np.random.seed(cfg.training.seed+i)
-        random.seed(cfg.training.seed+i)
-        jkey = jrand.PRNGKey(cfg.training.seed+i)
+        deterministic(cfg.training.seed+i)
 
         if cfg.dataset.distr == "normals":
             train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
@@ -47,45 +42,34 @@ def main(cfg):
             predictors, M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
         # use exp(log(alpha)) for numerical stability
-        beta = jnp.log(jnp.ones(M) * cfg.model.prior) # prior
-        alpha = jnp.array(beta, copy=True)
-        
-        # alpha = jnp.log(jrand.uniform(jkey, shape=(M,), minval=0.01, maxval=2)) # posterior
+        beta = torch.ones(M) * cfg.model.prior # prior
+
+        model = MajorityVote(predictors, beta)
 
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
 
-            if cfg.training.risk == "exact":
+        if cfg.training.risk == "exact":
 
-                print("Using 01-loss")
-                cost, params = BOUNDS[cfg.bound.type], (diri.risk, beta, cfg.bound.delta, ())
+            print("Using 01-loss")
+            cost, params = BOUNDS[cfg.bound.type], (model, cfg.bound.delta, ())
 
-            elif cfg.training.risk == "MC":
+        elif cfg.training.risk == "MC":
 
-                print("Using sigmoid loss")
-                cost, params = BOUNDS[cfg.bound.type], (diri.approximated_risk, beta, cfg.bound.delta, (sigmoid_loss, jkey))
+            print("Using sigmoid loss")
+            cost, params = BOUNDS[cfg.bound.type], (model, cfg.bound.delta, (sigmoid_loss, ))
         
         else:
+            raise NotImplementedError
 
-            print(f"Optimize train risk")
-
-            if cfg.training.risk == "exact":
-
-                print("Using 01-loss")
-                cost, params = diri.risk, ()
-
-            elif cfg.training.risk == "MC":
-
-                print("Using sigmoid loss")
-                cost, params = diri.approximated_risk, (sigmoid_loss, jkey)
         # get voter predictions
         train_data = train_x, train_y[..., None], predictors(train_x)
         test_data = test_x, test_y[..., None], predictors(test_x)
 
         # init train-eval monitoring 
-        monitor = None
-        # monitor = MonitorMV(SAVE_DIR)
+        # monitor = None
+        monitor = MonitorMV(SAVE_DIR)
 
         t1 = time()
         alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)

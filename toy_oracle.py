@@ -51,7 +51,7 @@ def main(cfg):
         beta = jnp.log(jnp.ones(M) / M) # uniform prior
         alpha = jnp.array(beta, copy=True)
         
-        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk)
+        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk).mean()
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
