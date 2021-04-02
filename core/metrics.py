@@ -1,24 +1,12 @@
 #!/usr/bin/env python
-import numpy as np
-import math
-from scipy import optimize
-import cvxpy as cp
-
-###############################################################################
-
-import os
-import sys
-import glob
-import torch
 import importlib
 import inspect
-import logging
-import numpy as np
-from core.numpy_dataset import NumpyDataset
 import math
-from scipy import optimize
+import cvxpy as cp
 
-from voter.majority_vote import MajorityVote
+import math
+
+from models.stochastic_mv import MajorityVote
 from core.kl_inv import kl_inv
 
 
@@ -81,58 +69,29 @@ class Metrics(metaclass=MetaMetrics):
 class RiskMetrics():
 
     def fit(self, y, y_p):
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
-        assert (len(y_p.shape) == 2 and len(y.shape) == 2 and
-                y_p.shape[0] == y.shape[0] and
-                y_p.shape[1] == y.shape[1] and
-                y.shape[1] == 1 and y_p.shape[0] > 0)
-        y_unique = np.sort(np.unique(y))
-        assert y_unique[0] == -1 and y_unique[1] == +1
-
-        return np.mean(0.5*(1.0-y_p*y))
-
+        return (0.5*(1.0-y_p*y)).mean()
 
 class DisagreementMetrics():
 
     def fit(self, y, y_p):
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
-        assert (len(y_p.shape) == 2 and len(y.shape) == 2 and
-                y_p.shape[0] == y.shape[0] and
-                y_p.shape[1] == y.shape[1] and
-                y.shape[1] == 1 and y_p.shape[0] > 0)
-        y_unique = np.sort(np.unique(y))
-        assert y_unique[0] == -1 and y_unique[1] == +1
-
-        return np.mean(0.5*(1.0-y_p**2.0))
+        return (0.5*(1.0-y_p**2.0)).mean()
 
 
 class JointMetrics():
 
     def fit(self, y, y_p):
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
-        assert (len(y_p.shape) == 2 and len(y.shape) == 2 and
-                y_p.shape[0] == y.shape[0] and
-                y_p.shape[1] == y.shape[1] and
-                y.shape[1] == 1 and y_p.shape[0] > 0)
-        y_unique = np.sort(np.unique(y))
-        assert y_unique[0] == -1 and y_unique[1] == +1
-
-        return np.mean((0.5*(1.0-y_p*y))**2.0)
+        return ((0.5*(1.0-y_p*y))**2.0).mean()
 
 
 class ZeroOneMetrics():
 
     def fit(self, y, y_p):
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
+
         risk = Metrics("Risk").fit
-        y_p_ = 2.0*(y_p > 0.0).astype(float)-1.0
+        y_p_ = 2.0*(y_p > 0.0).float()-1.0
         return risk(y, y_p_)
 
 
@@ -143,8 +102,6 @@ class CBoundMetrics():
         self.delta = delta
 
     def fit(self, y, y_p):
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
         m = y.shape[0]
 
@@ -157,8 +114,8 @@ class CBoundMetrics():
         return self.__c_bound(rS, dS)
 
     def __c_bound(self, r, d):
-        r = np.minimum(0.5, r)
-        d = np.maximum(0.0, d)
+        r = min(0.5, r)
+        d = max(0.0, d)
         cb = (1.0-((1.0-2.0*r)**2.0)/(1.0-2.0*d))
         return cb
 
@@ -171,8 +128,6 @@ class CBoundMcAllesterMetrics():
 
     def fit(self, y, y_p):
         assert isinstance(self.mv, MajorityVote)
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
         m = y.shape[0]
 
@@ -182,38 +137,37 @@ class CBoundMcAllesterMetrics():
         rS = risk(y, y_p)
         dS = disa(y, y_p)
 
-        prior = self.mv.prior
-        post = self.mv.post
-        kl = 0.0
-        if(not(self.mv.quasi_uniform)):
-            with np.errstate(divide='ignore'):
-                kl = np.log(post/prior)
-            kl[np.isinf(kl)] = 0.0
-            kl[np.isnan(kl)] = 0.0
-            kl = np.sum(post*kl)
+        kl = self.mv.KL()
 
         r = self.__risk_bound(rS, kl, m)
-        if(r > 0.5):
-            return np.array(1.0)
-        d = self.__disagreement_bound(dS, kl, m)
 
-        return self.__c_bound(r, d)
+        if(r > 0.5):
+            print(f"Vacuous bound: risk > 0.5")
+            return 1.
+
+        d = self.__disagreement_bound(dS, kl, m)
+        b = self.__c_bound(r, d)
+
+        print(f"risk={rS}, disagreement={dS}, KL={kl}")
+        print(f"Bound={b}, Risk bound={r}, Disagr bound={d}\n")
+
+        return b
 
     def __risk_bound(self, rS, kl, m):
         b = (1.0/(2.0*m))*(kl+math.log(
             (2.0*math.sqrt(m))/(0.5*self.delta)))
-        b = rS + np.sqrt(b)
+        b = rS + b**0.5
         return b
 
     def __disagreement_bound(self, dS, kl, m):
         b = (1.0/(2.0*m))*(2.0*kl+math.log(
             (2.0*math.sqrt(m))/(0.5*self.delta)))
-        b = dS - np.sqrt(b)
+        b = dS - b**0.5
         return b
 
     def __c_bound(self, r, d):
-        r = np.minimum(0.5, r)
-        d = np.maximum(0.0, d)
+        r = min(0.5, r)
+        d = max(0.0, d)
         cb = (1.0-((1.0-2.0*r)**2.0)/(1.0-2.0*d))
         return cb
 
@@ -226,8 +180,6 @@ class CBoundSeegerMetrics():
 
     def fit(self, y, y_p):
         assert isinstance(self.mv, MajorityVote)
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
         m = y.shape[0]
 
@@ -237,21 +189,21 @@ class CBoundSeegerMetrics():
         rS = risk(y, y_p)
         dS = disa(y, y_p)
 
-        prior = self.mv.prior
-        post = self.mv.post
-        kl = 0.0
-        if(not(self.mv.quasi_uniform)):
-            with np.errstate(divide='ignore'):
-                kl = np.log(post/prior)
-            kl[np.isinf(kl)] = 0.0
-            kl[np.isnan(kl)] = 0.0
-            kl = np.sum(post*kl)
+        kl = self.mv.KL()
 
         r = self.__risk_bound(rS, kl, m)
+
         if(r > 0.5):
-            return np.array(1.0)
+            print(f"Vacuous bound: risk > 0.5")
+            return 1.
+
         d = self.__disagreement_bound(dS, kl, m)
-        return self.__c_bound(r, d)
+        b = self.__c_bound(r, d)
+
+        print(f"risk={rS}, disagreement={dS}, KL={kl}")
+        print(f"Bound={b}, Risk bound={r}, Disagr bound={d}\n")
+
+        return b
 
     def __bound(self, kl, m):
         return (1.0/m)*(kl+math.log((2.0*math.sqrt(m))/(0.5*self.delta)))
@@ -267,8 +219,8 @@ class CBoundSeegerMetrics():
         return b
 
     def __c_bound(self, r, d):
-        r = np.minimum(0.5, r)
-        d = np.maximum(0.0, d)
+        r = min(0.5, r)
+        d = max(0.0, d)
         cb = (1.0-((1.0-2.0*r)**2.0)/(1.0-2.0*d))
         return cb
 
@@ -281,8 +233,6 @@ class CBoundJointMetrics():
 
     def fit(self, y, y_p):
         assert isinstance(self.mv, MajorityVote)
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
         m = y.shape[0]
 
@@ -292,18 +242,11 @@ class CBoundJointMetrics():
         eS = joint(y, y_p)
         dS = disa(y, y_p)
 
-        prior = self.mv.prior
-        post = self.mv.post
-        kl = 0.0
-        if(not(self.mv.quasi_uniform)):
-            with np.errstate(divide='ignore'):
-                kl = np.log(post/prior)
-            kl[np.isinf(kl)] = 0.0
-            kl[np.isnan(kl)] = 0.0
-            kl = np.sum(post*kl)
+        kl = self.mv.KL()
 
-        if(2.0*eS+dS >= 1.0 or dS > 2*(np.sqrt(eS)-eS)):
-            return np.array(1.0)
+        if(2.0*eS+dS >= 1.0 or dS > 2*(eS**0.5 -eS)):
+            return 1.
+
         (e, d) = self.__joint_disagreement_bound(eS, dS, kl, m)
         return self.__c_bound(e, d)
 
@@ -358,8 +301,6 @@ class RiskBoundMetrics():
 
     def fit(self, y, y_p):
         assert isinstance(self.mv, MajorityVote)
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
         m = y.shape[0]
 
@@ -367,15 +308,7 @@ class RiskBoundMetrics():
 
         rS = risk(y, y_p)
 
-        prior = self.mv.prior
-        post = self.mv.post
-        kl = 0.0
-        if(not(self.mv.quasi_uniform)):
-            with np.errstate(divide='ignore'):
-                kl = np.log(post/prior)
-            kl[np.isinf(kl)] = 0.0
-            kl[np.isnan(kl)] = 0.0
-            kl = np.sum(post*kl)
+        kl = self.mv.KL()
 
         r = self.__risk_bound(rS, kl, m)
         return 2.0*r
@@ -397,8 +330,6 @@ class JointBoundMetrics():
 
     def fit(self, y, y_p):
         assert isinstance(self.mv, MajorityVote)
-        assert isinstance(y, np.ndarray)
-        assert isinstance(y_p, np.ndarray)
 
         m = y.shape[0]
 
@@ -406,15 +337,7 @@ class JointBoundMetrics():
 
         eS = joint(y, y_p)
 
-        prior = self.mv.prior
-        post = self.mv.post
-        kl = 0.0
-        if(not(self.mv.quasi_uniform)):
-            with np.errstate(divide='ignore'):
-                kl = np.log(post/prior)
-            kl[np.isinf(kl)] = 0.0
-            kl[np.isnan(kl)] = 0.0
-            kl = np.sum(post*kl)
+        kl = self.mv.KL()
 
         e = self.__risk_bound(eS, kl, m)
         return 4.0*e

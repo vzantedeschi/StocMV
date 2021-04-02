@@ -2,7 +2,7 @@ import torch
 
 from tqdm import tqdm
 
-def train_batch(data, model, optimizer, bound=None, loss=None, nb_iter=1e4, monitor=None):
+def train_batch(data, model, optimizer, learner=None, bound=None, loss=None, nb_iter=1e4, monitor=None):
 
     model.train()
 
@@ -15,6 +15,10 @@ def train_batch(data, model, optimizer, bound=None, loss=None, nb_iter=1e4, moni
 
         if bound is not None:
             cost = bound(n, model, model.risk(data, loss))
+
+        elif learner is not None:
+            cost = learner.loss(n, model, data)
+
         else:
             cost = model.risk(data, loss)
 

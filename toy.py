@@ -82,7 +82,9 @@ def main(cfg):
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)
-    
+        
+        monitor.close()
+        
     np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
 
 if __name__ == "__main__":

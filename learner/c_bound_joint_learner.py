@@ -1,21 +1,18 @@
 #!/usr/bin/env python
 import torch
 import math
-from learner.gradient_descent_learner import GradientDescentLearner
+
 import cvxpy as cp
-from core.cocob_optim import COCOB
 
 ###############################################################################
 
 
-class CBoundJointLearner(GradientDescentLearner):
+class CBoundJointLearner():
 
     def __init__(
-        self, majority_vote, epoch=1, batch_size=None, delta=0.05, t=100
+        self, delta=0.05, t=1e2
     ):
-        super().__init__(majority_vote, epoch=epoch, batch_size=batch_size)
         self.t = t
-        self._optim = None
         self.delta = delta
 
     def __c_bound(self, e, d):
@@ -48,12 +45,12 @@ class CBoundJointLearner(GradientDescentLearner):
             kl += (1-q1-q2)*torch.log((1-q1-q2)/(1-p1-p2))
         return kl
 
-    def __optimize_given_eS_dS(self, eS, dS, kl, m):
+    def __optimize_given_eS_dS(self, eS, dS, kl, n):
         # We solve the inner maximization Problem using the
         # "Bisection method for quasiconvex optimization" of [3] (p 146)
         u=1.0
         l=0.0
-        bound = self.__bound(kl, m, self.delta).item()
+        bound = self.__bound(kl, n, self.delta).item()
 
         while(u-l>0.01):
             t = (l+u)/2.0
@@ -85,50 +82,39 @@ class CBoundJointLearner(GradientDescentLearner):
                 l = t
         return (e, d)
 
-    def __optimize_given_e_d(self, e, d, eS, dS, kl, m):
-        # We compute the gradient descent step given (e,d)
-        e = torch.tensor(e, device=eS.device)
-        d = torch.tensor(d, device=dS.device)
-
-        b = self.__bound(kl, m, self.delta)
-        self._loss = -self.__log_barrier(self.__kl_tri(dS, eS, d, e)-b)
-        self._loss += -self.__log_barrier(-0.5*(2.0*eS+dS))
-
-        self._optim.zero_grad()
-        self._loss.backward()
-        self._optim.step()
-
-
-    def _optimize(self, batch):
+    def loss(self, n, model, batch):
         # We optimize the PAC-Bound 2 by gradient descent
-        if(self._optim is None):
-            self._optim = COCOB(self.mv_diff.parameters())
 
-        self.mv_diff(batch)
-        pred = self.mv_diff.pred
-        kl = self.mv_diff.kl
+        y_target, y_pred = batch
+        mv_pred = torch.exp(model.post) * y_pred
 
-        assert "y" in batch and isinstance(batch["y"], torch.Tensor)
-        y = batch["y"]
-        y_unique = torch.sort(torch.unique(y))[0]
-        assert y_unique[0].item() == -1 and y_unique[1].item() == +1
+        kl = model.KL()
 
-        assert len(y.shape) == 2 and len(pred.shape) == 2
-        assert (pred.shape[0] == y.shape[0] and pred.shape[1] == y.shape[1]
-                and y.shape[1] == 1)
-        assert len(kl.shape) == 0
+        eS = torch.mean((0.5*(1.0-y_target*mv_pred))**2.0)
+        dS = torch.mean(0.5*(1.0-(mv_pred**2.0)))
 
-        eS = torch.mean((0.5*(1.0-y*pred))**2.0)
-        dS = torch.mean(0.5*(1.0-(pred**2.0)))
-        m = batch["m"]
+        e, d = self.__optimize_given_eS_dS(eS.item(), dS.item(), kl, n)
 
-        (e, d) = self.__optimize_given_eS_dS(
-            eS.item(), dS.item(), kl, m)
-        if(e is not None and d is not None):
-            self.__optimize_given_e_d(e, d, eS, dS, kl, m)
+        if e is not None and d is not None:
+            e = torch.tensor(e, device=eS.device)
+            d = torch.tensor(d, device=dS.device)
 
-        self._log["c-bound"] = self.__c_bound(e, d)
-        self._log["0-1 loss"] = 0.5*(1.0-torch.mean(torch.sign(y*pred)))
+            b = self.__bound(kl, n, self.delta)
+
+            if d < 0.5 and e < 0.5:
+                loss = 1 - (1 - 2*e - d)**2 / (1 - d) 
+            else:
+                loss = 1.
+
+            loss -= self.__log_barrier(self.__kl_tri(dS, eS, d, e) - b)
+            loss -= self.__log_barrier(-0.5*(2.0*eS+dS))
+
+            return loss
+
+        return 1.
+
+        # self._log["c-bound"] = self.__c_bound(e, d)
+        # self._log["0-1 loss"] = 0.5*(1.0-torch.mean(torch.sign(y_target*y_pred)))
 
 ###############################################################################
 

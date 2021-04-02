@@ -7,18 +7,18 @@ import torch
 
 from torch.optim import Adam
 
-from core.bounds import BOUNDS
-from core.losses import moment_loss
+from core.metrics import Metrics
 from core.monitors import MonitorMV
 from core.optimization import train_batch
 from core.utils import deterministic
 from data.toy_datasets import load
+from learner.c_bound_joint_learner import CBoundJointLearner
 from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
 @hydra.main(config_path='config/toy_oracle.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/cbound/joint/optimize-bound=True/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -45,42 +45,39 @@ def main(cfg):
 
         prior = torch.ones(M) / M # uniform prior
 
-        model = MajorityVote(predictors, prior, distr="categorical")
-        
-        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk).mean()
-
-        bound = None
-        if cfg.training.opt_bound:
-
-            print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta, coeff=2**cfg.training.risk)
-
         # get voter predictions
         train_data = train_y.unsqueeze(1), predictors(train_x)
         test_data = test_y.unsqueeze(1), predictors(test_x)
+
+        model = MajorityVote(predictors, prior, distr="categorical")
+        learner = CBoundJointLearner(delta=cfg.bound.delta)
 
         monitor = MonitorMV(SAVE_DIR, normalize=True)
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
 
         t1 = time()
-        train_batch(train_data, model, optimizer, bound=bound, loss=loss, nb_iter=cfg.training.iter, monitor=monitor)
+        train_batch(train_data, model, optimizer, learner=learner, nb_iter=cfg.training.iter, monitor=monitor)
         t2 = time()
         print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
         test_error = model.risk(test_data)
         train_error = model.risk(train_data)
-        train_risk = model.risk(train_data, loss)
 
         print(f"Test error: {test_error.item()}")
         
-        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_risk, cfg.bound.delta, coeff=2**cfg.training.risk, verbose=True))
+        if cfg.bound.type == "seeger":
+            b = Metrics("CBoundSeeger", model, delta=cfg.bound.delta).fit(*train_data)
+        elif cfg.bound.type == "mcallester":
+            b = Metrics("CBoundMcAllester", model, delta=cfg.bound.delta).fit(*train_data)
+        else:
+            raise NotImplementedError
         
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)
-        
+    
         monitor.close()
-        
+
     np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
 
 

@@ -4,8 +4,8 @@ def kl(q, p):
     return q * torch.log(q/p) + (1-q) * torch.log((1-q)/(1-p))
 
 def kl_inv(q, epsilon, mode, nb_iter_max=1000):
-    # bijection optimization method
-
+    # bisection optimization method
+    
     assert mode in ["MIN", "MAX"]
     assert q > 0 and q < 1
     assert epsilon > 0.0
