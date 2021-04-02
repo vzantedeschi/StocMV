@@ -27,10 +27,10 @@ class CBoundJointLearner():
         else:
             return self.t*x - (1.0/self.t)*math.log(1/(self.t**2.0))+(1/self.t)
 
-    def __bound(self, kl, m, delta):
+    def __bound(self, kl, n, delta):
         # We compute the PAC-Bayes bound of PAC-Bound 2 (see page 820 of [1])
-        b = math.log((2.0*math.sqrt(m)+m)/delta)
-        b = (1.0/m)*(2.0*kl+b)
+        b = math.log((2.* n**0.5 + n) / delta)
+        b = (2.0 * kl + b) / n
         return b
 
     def __kl_tri(self, q1, q2, p1, p2):
@@ -63,7 +63,8 @@ class CBoundJointLearner():
                 [(cp.kl_div(eS,e)+cp.kl_div(dS,d)
                   +cp.kl_div((1-eS-dS), 1-e-d)<=bound),
                  2*e+d<=1,
-                 d<=2.0*(cp.sqrt(e)-e)])
+                 d<=2.0*(cp.sqrt(e)-e),
+                 d <= 0.5, e <= 0.5])
 
             prob.solve()
 
@@ -93,6 +94,9 @@ class CBoundJointLearner():
         eS = torch.mean((0.5*(1.0-y_target*mv_pred))**2.0)
         dS = torch.mean(0.5*(1.0-(mv_pred**2.0)))
 
+        if 2 * eS + dS >= 1:
+            return 2 * eS + dS
+
         e, d = self.__optimize_given_eS_dS(eS.item(), dS.item(), kl, n)
 
         if e is not None and d is not None:
@@ -101,13 +105,9 @@ class CBoundJointLearner():
 
             b = self.__bound(kl, n, self.delta)
 
-            if d < 0.5 and e < 0.5:
-                loss = 1 - (1 - 2*e - d)**2 / (1 - d) 
-            else:
-                loss = 1.
-
+            loss = 1 - (1 - 2*e - d)**2 / (1 - 2 * d) 
             loss -= self.__log_barrier(self.__kl_tri(dS, eS, d, e) - b)
-            loss -= self.__log_barrier(-0.5*(2.0*eS+dS))
+            loss -= self.__log_barrier(d - 2.* (min(e, 0.25) ** 0.5 - e))
 
             return loss
 
