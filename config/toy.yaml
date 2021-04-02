@@ -11,6 +11,8 @@ training:
   iter: 1e3
   risk: "exact" # or MC
   opt_bound: True
+  sigmoid_c: 100
+  MC_draws: 10
 
 dataset:
   distr: normals # or moons

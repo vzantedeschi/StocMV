@@ -1,3 +1,5 @@
+num_trials: 10
+
 model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
   pred: "stumps-uniform" # or stumps-optimal

@@ -24,7 +24,7 @@ def train_batch(data, model, optimizer, bound=None, loss=None, nb_iter=1e4, moni
         optimizer.step()
 
         if monitor:
-            monitor.write_all(i, model.post, train={"Train-obj": cost.item()})
+            monitor.write_all(i, torch.exp(model.post), train={"Train-obj": cost.item()})
 
 def train_stochastic(dataloader, model, optimizer, epoch, bound=None, loss=None, monitor=None):
 
@@ -57,7 +57,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, bound=None, loss=None,
         optimizer.step()
         
         if monitor:
-            monitor.write_all(i, model.post, train={"Train-obj": cost.item()})
+            monitor.write_all(i, torch.exp(model.post), train={"Train-obj": cost.item()})
             
 def evaluate(dataloader, model, bounds, epoch, monitor=None, contrastive=False, device=None):
 

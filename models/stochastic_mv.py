@@ -10,6 +10,9 @@ class MajorityVote(torch.nn.Module):
 
         super(MajorityVote, self).__init__()
 
+        if distr not in ["dirichlet", "categorical"]:
+            raise NotImplementedError
+
         assert all(prior > 0), "all prior parameters must be positive"
 
         self.prior = prior
@@ -17,9 +20,14 @@ class MajorityVote(torch.nn.Module):
 
         if posterior is not None:
             assert all(posterior > 0.), "all posterior parameters must be positive"
-            self.post = torch.log(posterior)
+            self.post = posterior
         else:
-            self.post = torch.nn.Parameter(torch.log(torch.rand(prior.shape) * 2 + 1e-9), requires_grad=True)
+            self.post = torch.rand(prior.shape) * 2 + 1e-9 # uniform draws in (0, 2]
+
+        if distr == "categorical": # make sure params sum to 1
+            self.post /= self.post.sum()
+
+        self.post = torch.nn.Parameter(torch.log(self.post), requires_grad=True) # use log (and apply exp(post) later so that posterior parameters are always positive)
         
         self.distribution = distr_dict[distr](self.post)
 

@@ -74,14 +74,17 @@ class Categorical():
 
     def KL(self, beta):
 
-        t = self.theta / self.theta.sum()
+        exp_theta = torch.exp(self.theta)
+        t = exp_theta / exp_theta.sum()
+
         b = beta / beta.sum()
 
         return (t * torch.log(t / b)).sum()
 
     def approximated_risk(self, batch, loss):
 
-        t = self.theta / self.theta.sum()
+        exp_theta = torch.exp(self.theta)
+        t = exp_theta / exp_theta.sum()
 
         y_target, y_pred = batch
 
@@ -89,13 +92,14 @@ class Categorical():
 
     def risk(self, batch):
 
-        t = self.theta / self.theta.sum()
+        exp_theta = torch.exp(self.theta)
+        t = exp_theta / exp_theta.sum()
 
         y_target, y_pred = batch
 
         w_theta = torch.where(y_target != y_pred, t, torch.zeros(1)).sum(1)
 
-        return (w_theta >= 0.5).mean()
+        return (w_theta >= 0.5).float().mean()
 
 distr_dict = {
     "dirichlet": DirichletCustom,

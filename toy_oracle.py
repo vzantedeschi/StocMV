@@ -1,40 +1,33 @@
 import hydra
-
 from time import time
-
 from pathlib import Path
 
 import numpy as np
-import random
+import torch
 
-import jax.numpy as jnp
-import jax.random as jrand
+from torch.optim import Adam
 
-from bounds import *
-from datasets import load
-import categorical as cat
-from loss import moment_loss
-from monitors import MonitorMV
-from optimization import batch_gradient_descent
-from predictors import uniform_decision_stumps, custom_decision_stumps
+from core.bounds import BOUNDS
+from core.losses import moment_loss
+from core.monitors import MonitorMV
+from core.optimization import train_batch
+from core.utils import deterministic
+from data.toy_datasets import load
+from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
 @hydra.main(config_path='config/toy_oracle.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/seed={cfg.training.seed}-{cfg.training.seed+10}"
-
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
+
+    print("results will be saved in:", SAVE_DIR.resolve()) 
     
-    print("results will be saved in:", SAVE_DIR.resolve())
-    
-    monitor = None
-    test_errors, train_errors, bounds = [], [], []
-    for i in range(10):
+    train_errors, test_errors, bounds = [], [], []
+    for i in range(cfg.num_trials):
         
-        np.random.seed(cfg.training.seed+i)
-        random.seed(cfg.training.seed+i)
-        jkey = jrand.PRNGKey(cfg.training.seed+i)
+        deterministic(cfg.training.seed+i)
     
         if cfg.dataset.distr == "normals":
             train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
@@ -48,52 +41,46 @@ def main(cfg):
         elif cfg.model.pred == "stumps-optimal":
             predictors, M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
 
-        beta = jnp.log(jnp.ones(M) / M) # uniform prior
-        alpha = jnp.array(beta, copy=True)
+        train_x, train_y, test_x, test_y = torch.from_numpy(train_x).float(), torch.from_numpy(train_y).float(), torch.from_numpy(test_x).float(), torch.from_numpy(test_y).float()
+
+        prior = torch.ones(M) / M # uniform prior
+
+        model = MajorityVote(predictors, prior, distr="categorical")
         
         loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk).mean()
+
+        bound = None
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-
-            print(f"Using {cfg.training.risk} order loss")
-            cost, params = BOUNDS[cfg.bound.type], (cat.risk_upper_bound, beta, cfg.bound.delta, (loss,), 2**cfg.training.risk)
-        
-        else:
-
-            print(f"Optimize train risk")
-
-            print(f"Using {cfg.training.risk} order loss")
-            cost, params = cat.risk_upper_bound, (loss,)
-    
-
-        # alpha = jrand.uniform(jkey, shape=(M,), minval=0, maxval=10) # posterior
-        # alpha /= alpha.sum() # has to sum to 1
-        # alpha = jnp.log(alpha)
+            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta, coeff=2**cfg.training.risk)
 
         # get voter predictions
-        train_data = train_x, train_y[..., None], predictors(train_x)
-        test_data = test_x, test_y[..., None], predictors(test_x)
+        train_data = train_y.unsqueeze(1), predictors(train_x)
+        test_data = test_y.unsqueeze(1), predictors(test_x)
 
-        # init train-eval monitoring 
-        # monitor = MonitorMV(SAVE_DIR)
+        monitor = MonitorMV(SAVE_DIR, normalize=True)
+        optimizer = Adam(model.parameters(), lr=cfg.training.lr)
+
         t1 = time()
-        alpha_opt = batch_gradient_descent(train_data, alpha, cost, params, lr=cfg.training.lr, num_iters=int(cfg.training.iter), monitor=monitor)
+        train_batch(train_data, model, optimizer, bound=bound, loss=loss, nb_iter=cfg.training.iter, monitor=monitor)
         t2 = time()
         print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
-        test_error = float(cat.risk(test_data, alpha_opt))
-        train_error = float(cat.risk(train_data, alpha_opt))
+        test_error = model.risk(test_data)
+        train_error = model.risk(train_data)
+        train_risk = model.risk(train_data, loss)
 
-        print(f"Test error: {test_error}")
-
-        b = float(BOUNDS[cfg.bound.type](train_data, alpha_opt, cat.risk_upper_bound, beta, cfg.bound.delta, (loss,), 2**cfg.training.risk, verbose=True))
+        print(f"Test error: {test_error.item()}")
         
-        test_errors.append(test_error)
-        train_errors.append(train_error)
+        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_risk, cfg.bound.delta, coeff=2**cfg.training.risk, verbose=True))
+        
+        train_errors.append(train_error.item())
+        test_errors.append(test_error.item())
         bounds.append(b)
-
+    
     np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
+
 
 if __name__ == "__main__":
     main()
