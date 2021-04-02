@@ -19,7 +19,11 @@ from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_d
 def main(cfg):
 
     SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+
     SAVE_DIR = Path(SAVE_DIR)
+
+    if cfg.training.risk == "MC":
+        SAVE_DIR = SAVE_DIR / f"MC={cfg.training.MC_draws}"
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
@@ -39,14 +43,14 @@ def main(cfg):
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, train_x.min(0), train_x.max(0))
 
         elif cfg.model.pred == "stumps-optimal":
-            predictors, M = custom_decision_stumps(np.zeros((2, 2)), np.array([[1, -1], [1, -1]]))
+            predictors, M = custom_decision_stumps(torch.zeros((2, 2)), torch.tensor([[1, -1], [1, -1]]))
 
         train_x, train_y, test_x, test_y = torch.from_numpy(train_x).float(), torch.from_numpy(train_y).float(), torch.from_numpy(test_x).float(), torch.from_numpy(test_y).float()
 
         # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) * cfg.model.prior # prior
 
-        model = MajorityVote(predictors, beta)
+        model = MajorityVote(predictors, beta, mc_draws=cfg.training.MC_draws)
 
         bound = None
         if cfg.training.opt_bound:

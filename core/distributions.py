@@ -32,9 +32,10 @@ class BetaInc(torch.autograd.Function):
 
 class DirichletCustom():
 
-    def __init__(self, alpha):
+    def __init__(self, alpha, mc_draws=10):
 
         self.alpha = alpha
+        self.mc_draws = mc_draws
 
     # Kullback-Leibler divergence between two Dirichlets
     def KL(self, beta):
@@ -59,19 +60,20 @@ class DirichletCustom():
 
         return sum(s) / len(y_target)
 
-    def approximated_risk(self, batch, loss, num_draws=10):
+    def approximated_risk(self, batch, loss):
 
         y_target, y_pred = batch
 
-        thetas = Dirichlet(torch.exp(self.alpha)).rsample((num_draws,))
+        thetas = Dirichlet(torch.exp(self.alpha)).rsample((self.mc_draws,))
 
         return loss(y_target, y_pred, thetas).mean()
 
 class Categorical():
 
-    def __init__(self, theta):
+    def __init__(self, theta, mc_draws=10):
         self.theta = theta
-
+        self.mc_draws = mc_draws
+        
     def KL(self, beta):
 
         exp_theta = torch.exp(self.theta)

@@ -6,7 +6,7 @@ from core.distributions import distr_dict
 
 class MajorityVote(torch.nn.Module):
 
-    def __init__(self, voters, prior, posterior=None, distr="dirichlet"):
+    def __init__(self, voters, prior, mc_draws=10, posterior=None, distr="dirichlet"):
 
         super(MajorityVote, self).__init__()
 
@@ -17,6 +17,7 @@ class MajorityVote(torch.nn.Module):
 
         self.prior = prior
         self.voters = voters
+        self.mc_draws = mc_draws
 
         if posterior is not None:
             assert all(posterior > 0.), "all posterior parameters must be positive"
@@ -29,9 +30,9 @@ class MajorityVote(torch.nn.Module):
 
         self.post = torch.nn.Parameter(torch.log(self.post), requires_grad=True) # use log (and apply exp(post) later so that posterior parameters are always positive)
         
-        self.distribution = distr_dict[distr](self.post)
+        self.distribution = distr_dict[distr](self.post, mc_draws)
 
-        self.fitted = False
+        self.fitted = True
 
     def forward(self, x):
         return self.voters(x)
@@ -76,4 +77,4 @@ def custom_decision_stumps(thresholds, signs):
 
     stumps = lambda x: stumps_predict(x, thresholds, signs)
 
-    return stumps, d * M * 2
+    return stumps, np.prod(signs.shape)
