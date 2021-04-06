@@ -43,7 +43,7 @@ def main(cfg):
 
         model = MajorityVote(predictors, prior, distr="categorical")
         
-        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk).mean()
+        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk)
 
         bound = None
         if cfg.training.opt_bound:

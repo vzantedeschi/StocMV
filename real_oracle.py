@@ -11,22 +11,20 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 
 from core.bounds import BOUNDS
-from core.losses import sigmoid_loss
+from core.losses import moment_loss
 from core.monitors import MonitorMV
 from core.optimization import train_stochastic, evaluate
 from core.utils import deterministic
 from data.datasets import Dataset, TorchDataset
 from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
-@hydra.main(config_path='config/real.yaml')
+@hydra.main(config_path='config/real_oracle.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.name}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.name}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
 
-    if cfg.training.risk == "MC":
-        SAVE_DIR = SAVE_DIR / f"MC={cfg.training.MC_draws}"
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
@@ -47,19 +45,15 @@ def main(cfg):
         # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) * cfg.model.prior # prior
 
-        model = MajorityVote(predictors, beta, mc_draws=cfg.training.MC_draws)
+        model = MajorityVote(predictors, beta, mc_draws=cfg.training.MC_draws, distr="categorical")
+
+        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk)
 
         bound = None
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta)
-
-        loss = None
-        if cfg.training.risk == "MC":
-
-            print("with approximated risk, using sigmoid loss")
-            loss = sigmoid_loss
+            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta, coeff=2**cfg.training.risk)
 
         trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=cfg.training.batch_size, num_workers=cfg.num_workers, shuffle=True)
         valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers, shuffle=False)
@@ -97,13 +91,14 @@ def main(cfg):
         t2 = time()
 
         test_error = evaluate(testloader, best_model, epoch=e, tag="test")
-        train_error = evaluate(trainloader, best_model, epoch=e, bounds={cfg.bound.type: bound}, tag="train")
+        train_error = evaluate(trainloader, best_model, epoch=e, tag="train")
+        train_risk = evaluate(trainloader, best_model, epoch=e, bounds={cfg.bound.type: bound}, loss=loss, tag="train")
 
-        print(f"Test error: {test_error['error']}; {cfg.bound.type} bound: {train_error[cfg.bound.type]}\n")
+        print(f"Test error: {test_error['error']}; {cfg.bound.type} bound: {train_risk[cfg.bound.type]}\n")
         
         train_errors.append(train_error['error'])
         test_errors.append(test_error['error'])
-        bounds.append(train_error[cfg.bound.type])
+        bounds.append(train_risk[cfg.bound.type])
         
         monitor.close()
         

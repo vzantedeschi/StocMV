@@ -9,7 +9,7 @@ class MajorityVote(torch.nn.Module):
     def __init__(self, voters, prior, mc_draws=10, posterior=None, distr="dirichlet"):
 
         super(MajorityVote, self).__init__()
-
+        
         if distr not in ["dirichlet", "categorical"]:
             raise NotImplementedError
 

@@ -66,7 +66,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         if monitor:
             monitor.write_all(i, torch.exp(model.post), train={"Train-obj": cost.item()})
             
-def evaluate(dataloader, model, epoch, bounds=None, monitor=None, tag="val"):
+def evaluate(dataloader, model, epoch, bounds=None, loss=None, monitor=None, tag="val"):
 
     model.eval()
 
@@ -76,7 +76,7 @@ def evaluate(dataloader, model, epoch, bounds=None, monitor=None, tag="val"):
 
         data = batch[1], model(batch[0])
 
-        risk += model.risk(data, mean=False)
+        risk += model.risk(data, loss=loss, mean=False)
         n += len(data[0])
 
     risk /= n

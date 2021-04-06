@@ -5,13 +5,7 @@ from data.real_datasets import *
 from data.toy_datasets import *
 
 REAL_DATASETS = {
-    'A9A': fetch_A9A,
-    'EPSILON': fetch_EPSILON,
-    'PROTEIN': fetch_PROTEIN,
-    'YEAR': fetch_YEAR,
     'HIGGS': fetch_HIGGS,
-    'MICROSOFT': fetch_MICROSOFT,
-    'YAHOO': fetch_YAHOO,
     'CLICK': fetch_CLICK,
     'GLASS': fetch_GLASS,
     'COVTYPE': fetch_COVTYPE,
