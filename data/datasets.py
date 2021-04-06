@@ -14,7 +14,9 @@ REAL_DATASETS = {
     'TTT': fetch_TICTACTOE,
     'HABER': fetch_HABERMAN,
     'PHIS': fetch_PHISHING,
-    'ADULT': fetch_ADULT
+    'ADULT': fetch_ADULT,
+    'CODRNA': fetch_CODRNA,
+    'SVMGUIDE': fetch_SVMGUIDE1
 }
 
 TOY_DATASETS = [

@@ -18,6 +18,48 @@ from category_encoders.ordinal import OrdinalEncoder
 
 from core.utils import download, read_idx_file
 
+def fetch_SVMGUIDE1(path, valid_size=0.2, seed=None):
+
+    path = Path(path)
+    train_path = path / 'svmguide1.data'
+    test_path = path / 'svmguide1-test.data'
+
+    if not train_path.exists() or not test_path.exists():
+        path.mkdir(parents=True)
+
+        download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/svmguide1', train_path)
+        download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/svmguide1.t', test_path)
+
+    X_train, y_train = read_idx_file(train_path, 4, " ")
+    X_test, y_test = read_idx_file(train_path, 4, " ")
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
+def fetch_CODRNA(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    path = Path(path)
+    data_path = path / 'codrna.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True)
+
+        download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/cod-rna', data_path)
+
+    X, Y = read_idx_file(data_path, 8)
+    Y[Y == -1] = 0
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
 def fetch_PHISHING(path, valid_size=0.2, test_size=0.2, seed=None):
 
     path = Path(path)
