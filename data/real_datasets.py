@@ -16,7 +16,75 @@ from sklearn.model_selection import train_test_split
 from category_encoders import LeaveOneOutEncoder
 from category_encoders.ordinal import OrdinalEncoder
 
-from core.utils import download
+from core.utils import download, read_idx_file
+
+def fetch_PHISHING(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    path = Path(path)
+    data_path = path / 'phishing.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True)
+
+        download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/phishing', data_path)
+
+    X, Y = read_idx_file(data_path, 68, " ")
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
+def fetch_ADULT(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    path = Path(path)
+    train_path = path / 'adult.data'
+    test_path = path / 'adult.test'
+
+    if not train_path.exists() or not test_path.exists():
+        path.mkdir(parents=True)
+
+        download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a', train_path)
+        download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a.t', test_path)
+
+    X_train, y_train = read_idx_file(train_path, 123)
+    y_train[y_train == -1] = 0
+    X_test, y_test = read_idx_file(test_path, 123)
+    y_test[y_test == -1] = 0
+
+    X, Y = np.vstack([X_train, X_test]), np.hstack([y_train, y_test])
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
+
+def fetch_HABERMAN(path, valid_size=0.2, test_size=0.2, seed=None):
+
+    path = Path(path)
+    data_path = path / 'haberman.data'
+
+    if not data_path.exists():
+        path.mkdir(parents=True)
+
+        download('https://archive.ics.uci.edu/ml/machine-learning-databases/haberman/haberman.data', data_path)
+
+    data = np.genfromtxt(data_path, delimiter=',')
+
+    X, Y = (data[:, 1:-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
+
+    X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
+
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+
+    return dict(
+        X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
+    )
 
 def fetch_GLASS(path, valid_size=0.2, test_size=0.2, seed=None):
 

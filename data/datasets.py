@@ -12,6 +12,9 @@ REAL_DATASETS = {
     'DIGITS': fetch_DIGITS,
     'MUSH': fetch_MUSHROOMS,
     'TTT': fetch_TICTACTOE,
+    'HABER': fetch_HABERMAN,
+    'PHIS': fetch_PHISHING,
+    'ADULT': fetch_ADULT
 }
 
 TOY_DATASETS = [

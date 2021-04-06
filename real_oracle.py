@@ -90,9 +90,11 @@ def main(cfg):
 
         t2 = time()
 
+        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers)
+
         test_error = evaluate(testloader, best_model, epoch=e, tag="test")
-        train_error = evaluate(trainloader, best_model, epoch=e, tag="train")
-        train_risk = evaluate(trainloader, best_model, epoch=e, bounds={cfg.bound.type: bound}, loss=loss, tag="train")
+        train_error = evaluate(trainvalloader, best_model, epoch=e, tag="train-val")
+        train_risk = evaluate(trainvalloader, best_model, epoch=e, bounds={cfg.bound.type: bound}, loss=loss, tag="train-val")
 
         print(f"Test error: {test_error['error']}; {cfg.bound.type} bound: {train_risk[cfg.bound.type]}\n")
         

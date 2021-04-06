@@ -3,7 +3,6 @@ num_workers: 4
 
 model:
   M: 1 # number of predictors, if stumps: 2*M per dimension
-  prior: 0.1 # param of the Dirichlet prior
   pred: "stumps-uniform"
 
 training:
@@ -11,7 +10,7 @@ training:
   lr: 0.01
   batch_size: 1024
   num_epochs: 100
-  risk: "exact" # or MC
+  risk: 1 # or 2
   opt_bound: True
   sigmoid_c: 100
   MC_draws: 10
