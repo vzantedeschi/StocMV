@@ -12,7 +12,7 @@ from core.losses import sigmoid_loss
 from core.monitors import MonitorMV
 from core.optimization import train_batch
 from core.utils import deterministic
-from data.toy_datasets import load
+from data.datasets import Dataset
 from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
 @hydra.main(config_path='config/toy.yaml')
@@ -33,19 +33,15 @@ def main(cfg):
         
         deterministic(cfg.training.seed+i)
 
-        if cfg.dataset.distr == "normals":
-            train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
-
-        else:
-            train_x, train_y, test_x, test_y = load(cfg.dataset.distr, cfg.dataset.N_train, cfg.dataset.N_test)
+        data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test)     
 
         if cfg.model.pred == "stumps-uniform":
-            predictors, M = uniform_decision_stumps(cfg.model.M, 2, train_x.min(0), train_x.max(0))
+            predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
 
         elif cfg.model.pred == "stumps-optimal":
             predictors, M = custom_decision_stumps(torch.zeros((2, 2)), torch.tensor([[1, -1], [1, -1]]))
 
-        train_x, train_y, test_x, test_y = torch.from_numpy(train_x).float(), torch.from_numpy(train_y).float(), torch.from_numpy(test_x).float(), torch.from_numpy(test_y).float()
+        train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
 
         # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) * cfg.model.prior # prior

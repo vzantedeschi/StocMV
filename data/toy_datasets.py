@@ -43,6 +43,12 @@ DATASETS = {
     "moons": load_moons
 }
 
-def load(name, n_train, n_test, **kwargs):
+def toy_dataset(name, n_train, n_test, **kwargs):
 
-    return DATASETS[name](n_train, n_test, **kwargs)
+    if name == "normals":
+        X_train, y_train, X_test, y_test = DATASETS[name](n_train, n_test, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
+
+    else:
+        X_train, y_train, X_test, y_test = DATASETS[name](n_train, n_test)
+        
+    return dict(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)
