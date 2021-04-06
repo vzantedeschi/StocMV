@@ -18,7 +18,7 @@ from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_d
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.dataset.N_train}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
 
@@ -28,7 +28,7 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
     
-    train_errors, test_errors, bounds = [], [], []
+    train_errors, test_errors, bounds, times = [], [], [], []
     for i in range(cfg.num_trials):
         
         deterministic(cfg.training.seed+i)
@@ -61,8 +61,8 @@ def main(cfg):
             loss = sigmoid_loss
 
         # get voter predictions
-        train_data = train_y.unsqueeze(1), predictors(train_x)
-        test_data = test_y.unsqueeze(1), predictors(test_x)
+        train_data = train_y, predictors(train_x)
+        test_data = test_y, predictors(test_x)
 
         monitor = MonitorMV(SAVE_DIR)
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
@@ -82,10 +82,11 @@ def main(cfg):
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)
+        times.append(t2-t1)
         
         monitor.close()
         
-    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
+    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))})
 
 if __name__ == "__main__":
     main()

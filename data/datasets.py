@@ -63,7 +63,7 @@ class Dataset:
         self.y_train = data_dict['y_train'][..., None]
         self.X_test = data_dict['X_test']
         self.y_test = data_dict['y_test'][..., None]
-
+        
         if binary:
             self.y_train[self.y_train == 0] = -1
             self.y_test[self.y_test == 0] = -1

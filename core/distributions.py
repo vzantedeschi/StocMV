@@ -55,7 +55,7 @@ class DirichletCustom():
 
         correct = torch.where(y_target == y_pred, exp_alpha, torch.zeros(1)).sum(1)
         wrong = torch.where(y_target != y_pred, exp_alpha, torch.zeros(1)).sum(1)
-
+        
         s = [BetaInc.apply(c, w, 0.5) for c, w in zip(correct, wrong)]
 
         if mean:

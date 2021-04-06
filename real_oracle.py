@@ -43,7 +43,7 @@ def main(cfg):
             raise NotImplementedError("Only stumps-uniform supported atm")
 
         # use exp(log(alpha)) for numerical stability
-        beta = torch.ones(M) * cfg.model.prior # prior
+        beta = torch.ones(M) / M # prior
 
         model = MajorityVote(predictors, beta, mc_draws=cfg.training.MC_draws, distr="categorical")
 
