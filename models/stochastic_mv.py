@@ -37,12 +37,12 @@ class MajorityVote(torch.nn.Module):
     def forward(self, x):
         return self.voters(x)
 
-    def risk(self, batch, loss=None):
+    def risk(self, batch, loss=None, mean=True):
 
         if loss is not None:
-            return self.distribution.approximated_risk(batch, loss)
+            return self.distribution.approximated_risk(batch, loss, mean)
 
-        return self.distribution.risk(batch)
+        return self.distribution.risk(batch, mean)
 
     def predict(self, X, num_draws=10):
         

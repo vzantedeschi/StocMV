@@ -47,7 +47,7 @@ class DirichletCustom():
 
         return res
 
-    def risk(self, batch):
+    def risk(self, batch, mean=True):
         # 01-loss applied to batch
 
         y_target, y_pred = batch
@@ -58,15 +58,23 @@ class DirichletCustom():
 
         s = [BetaInc.apply(c, w, 0.5) for c, w in zip(correct, wrong)]
 
-        return sum(s) / len(y_target)
+        if mean:
+            return sum(s) / len(y_target)
 
-    def approximated_risk(self, batch, loss):
+        return sum(s)
+
+    def approximated_risk(self, batch, loss, mean=True):
 
         y_target, y_pred = batch
 
         thetas = Dirichlet(torch.exp(self.alpha)).rsample((self.mc_draws,))
 
-        return loss(y_target, y_pred, thetas).mean()
+        r = loss(y_target, y_pred, thetas)
+
+        if mean:
+            return r.mean()
+
+        return r.sum()
 
 class Categorical():
 
@@ -83,16 +91,21 @@ class Categorical():
 
         return (t * torch.log(t / b)).sum()
 
-    def approximated_risk(self, batch, loss):
+    def approximated_risk(self, batch, loss, mean=True):
 
         exp_theta = torch.exp(self.theta)
         t = exp_theta / exp_theta.sum()
 
         y_target, y_pred = batch
 
-        return loss(y_target, y_pred, t).mean()
+        r = loss(y_target, y_pred, t)
+        
+        if mean:
+            return r.mean()
 
-    def risk(self, batch):
+        return r.sum()
+
+    def risk(self, batch, mean=True):
 
         exp_theta = torch.exp(self.theta)
         t = exp_theta / exp_theta.sum()
@@ -101,7 +114,12 @@ class Categorical():
 
         w_theta = torch.where(y_target != y_pred, t, torch.zeros(1)).sum(1)
 
-        return (w_theta >= 0.5).float().mean()
+        r = (w_theta >= 0.5).float()
+
+        if mean:
+            return r.mean()
+
+        return r.sum()
 
 distr_dict = {
     "dirichlet": DirichletCustom,

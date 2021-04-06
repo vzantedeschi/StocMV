@@ -1,0 +1,24 @@
+num_trials: 10
+num_workers: 4
+
+model:
+  M: 1 # number of predictors, if stumps: 2*M per dimension
+  prior: 1 # param of the Dirichlet prior
+  pred: "stumps-uniform"
+
+training:
+  seed: 06042021
+  lr: 0.1
+  batch_size: 512
+  num_epochs: 100
+  risk: "exact" # or MC
+  opt_bound: True
+  sigmoid_c: 100
+  MC_draws: 10
+
+dataset:
+  name: 'MUSH'
+
+bound:
+  delta: 0.05
+  type: "mcallester"
