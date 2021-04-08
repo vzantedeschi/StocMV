@@ -33,6 +33,8 @@ def main(cfg):
 
     data = Dataset(cfg.dataset.name, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")     
 
+    print(cfg.dataset.name, data.X_valid.shape)
+    exit(0)
     train_errors, test_errors, bounds, times = [], [], [], []
     for i in range(cfg.num_trials):
         

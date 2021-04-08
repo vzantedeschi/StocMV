@@ -31,7 +31,7 @@ def main(cfg):
 
     data = Dataset(cfg.dataset.name, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")     
 
-    train_errors, test_errors, bounds, times = [], [], [], []
+    train_errors, test_errors, bounds, times, risks = [], [], [], [], []
     for i in range(cfg.num_trials):
         
         deterministic(cfg.training.seed+i)
@@ -59,7 +59,7 @@ def main(cfg):
         valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers, shuffle=False)
         testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers, shuffle=False)
 
-        monitor = MonitorMV(SAVE_DIR)
+        monitor = MonitorMV(SAVE_DIR, normalize=True)
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
         # init learning rate scheduler
         lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
@@ -101,10 +101,11 @@ def main(cfg):
         train_errors.append(train_error['error'])
         test_errors.append(test_error['error'])
         bounds.append(train_risk[cfg.bound.type])
+        risks.append(train_risk['error'])
         
         monitor.close()
         
-    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
+    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "train-risk": (np.mean(risks), np.std(risks))})
 
 if __name__ == "__main__":
     main()

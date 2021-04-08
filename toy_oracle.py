@@ -24,7 +24,7 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
     
-    train_errors, test_errors, bounds = [], [], []
+    train_errors, test_errors, bounds, risks = [], [], [], []
     for i in range(cfg.num_trials):
         
         deterministic(cfg.training.seed+i)
@@ -74,10 +74,11 @@ def main(cfg):
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)
+        risks.append(train_risk.item())
         
         monitor.close()
         
-    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds))})
+    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "train-risk": (np.mean(risks), np.std(risks))})
 
 
 if __name__ == "__main__":
