@@ -16,8 +16,7 @@ training:
   sigmoid_c: 100
   MC_draws: 10
 
-dataset:
-  name: 'SVMGUIDE'
+dataset: 'SVMGUIDE'
 
 bound:
   delta: 0.05

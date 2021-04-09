@@ -15,8 +15,7 @@ training:
   sigmoid_c: 100
   MC_draws: 10
 
-dataset:
-  name: 'MUSH'
+dataset: 'MUSH'
 
 bound:
   delta: 0.05
