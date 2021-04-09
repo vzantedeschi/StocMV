@@ -21,7 +21,7 @@ from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_d
 @hydra.main(config_path='config/real.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.name}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.name}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
 
@@ -33,8 +33,6 @@ def main(cfg):
 
     data = Dataset(cfg.dataset.name, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")     
 
-    print(cfg.dataset.name, data.X_valid.shape)
-    exit(0)
     train_errors, test_errors, bounds, times = [], [], [], []
     for i in range(cfg.num_trials):
         
@@ -46,7 +44,6 @@ def main(cfg):
         else:
             raise NotImplementedError("Only stumps-uniform supported atm")
 
-        # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) * cfg.model.prior # prior
 
         model = MajorityVote(predictors, beta, mc_draws=cfg.training.MC_draws)
@@ -55,7 +52,14 @@ def main(cfg):
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta)
+
+            if cfg.bound.stochastic:
+                print("Evaluate bound regularizations over mini-batch")
+                bound = lambda n, m, r: BOUNDS[cfg.bound.type](n, m, r, cfg.bound.delta)
+
+            else:
+                print("Evaluate bound regularizations over whole train+val set")
+                bound = lambda n, m, r: BOUNDS[cfg.bound.type](len(data.X_train) + len(data.X_valid), m, r, cfg.bound.delta)
 
         loss = None
         if cfg.training.risk == "MC":
@@ -67,12 +71,14 @@ def main(cfg):
         valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers, shuffle=False)
         testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers, shuffle=False)
 
+        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers)
+
         monitor = MonitorMV(SAVE_DIR)
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
         # init learning rate scheduler
         lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
 
-        best_val_loss = float("inf")
+        best_val_error = float("inf")
         best_e = -1
         no_improv = 0
 
@@ -80,33 +86,33 @@ def main(cfg):
         for e in range(cfg.training.num_epochs):
             train_stochastic(trainloader, model, optimizer, epoch=e, bound=bound, loss=loss, monitor=monitor)
 
-            val_loss = evaluate(valloader, model, epoch=e, monitor=monitor)
-            print(f"Epoch {e}: {val_loss['error']}\n")
+            val_error = evaluate(valloader, model, epoch=e, monitor=monitor)
+            train_error = evaluate(trainvalloader, model, epoch=e, bounds={cfg.bound.type: bound}, monitor=monitor, tag="train-val")
+            print(f"Epoch {e}: {val_error['error']}\n")
             
             no_improv += 1
-            if val_loss['error'] < best_val_loss:
-                best_val_loss = val_loss['error']
+            if val_error['error'] < best_val_error:
+                best_val_error = val_error['error']
+                best_train_stats = train_error
                 best_e = e
                 best_model = deepcopy(model)
                 no_improv = 0
 
             # reduce learning rate if needed
-            lr_scheduler.step(val_loss['error'])
+            lr_scheduler.step(val_error['error'])
 
             if no_improv == cfg.training.num_epochs // 4:
                 break
 
         t2 = time()
 
-        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=cfg.training.batch_size*2, num_workers=cfg.num_workers)
         test_error = evaluate(testloader, best_model, epoch=e, tag="test")
-        train_error = evaluate(trainvalloader, best_model, epoch=e, bounds={cfg.bound.type: bound}, tag="train-val")
 
-        print(f"Test error: {test_error['error']}; {cfg.bound.type} bound: {train_error[cfg.bound.type]}\n")
+        print(f"Test error: {test_error['error']}; {cfg.bound.type} bound: {best_train_stats[cfg.bound.type]}\n")
         
-        train_errors.append(train_error['error'])
+        train_errors.append(best_train_stats['error'])
         test_errors.append(test_error['error'])
-        bounds.append(train_error[cfg.bound.type])
+        bounds.append(best_train_stats[cfg.bound.type])
         
         monitor.close()
         

@@ -21,7 +21,7 @@ from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_d
 @hydra.main(config_path='config/real_oracle.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.name}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.name}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/prior=uniform/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
 
@@ -42,7 +42,6 @@ def main(cfg):
         else:
             raise NotImplementedError("Only stumps-uniform supported atm")
 
-        # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) / M # prior
 
         model = MajorityVote(predictors, beta, mc_draws=cfg.training.MC_draws, distr="categorical")

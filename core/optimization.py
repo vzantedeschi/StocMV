@@ -64,7 +64,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         optimizer.step()
         
         if monitor:
-            monitor.write_all(i, torch.exp(model.post), model.post.gradient, train={"Train-obj": cost.item()})
+            monitor.write_all(last_iter+i, torch.exp(model.post), model.post.grad, train={"Train-obj": cost.item()})
             
 def evaluate(dataloader, model, epoch, bounds=None, loss=None, monitor=None, tag="val"):
 
@@ -87,7 +87,7 @@ def evaluate(dataloader, model, epoch, bounds=None, loss=None, monitor=None, tag
         for k in bounds.keys():
             total_metrics[k] = bounds[k](n, model, risk).item()
 
-        if monitor:
-            monitor.write(epoch, **{tag: total_metrics})
+    if monitor:
+        monitor.write(epoch, **{tag: total_metrics})
 
     return total_metrics

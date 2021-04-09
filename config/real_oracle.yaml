@@ -21,3 +21,4 @@ dataset:
 bound:
   delta: 0.05
   type: "mcallester"
+  stochastic: True

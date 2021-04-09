@@ -17,8 +17,9 @@ training:
   MC_draws: 10
 
 dataset:
-  name: 'MUSH'
+  name: 'SVMGUIDE'
 
 bound:
   delta: 0.05
   type: "mcallester"
+  stochastic: True
