@@ -2,7 +2,6 @@ betaincder==0.1.1
 category-encoders==2.2.2
 cvxpy==1.1.11
 hydra-core==0.11.3
+optuna==2.7.0
 tensorboardX==2.0
 tqdm==4.59.0
-
-
