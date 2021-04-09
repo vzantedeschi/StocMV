@@ -44,13 +44,24 @@ class MajorityVote(torch.nn.Module):
 
         return self.distribution.risk(batch, mean)
 
-    def predict(self, X, num_draws=10):
+    def predict(self, X):
         
-        # thetas = self.rsample(num_draws)
-        # y_pred = self(X)
+        thetas = self.distribution.rsample()
+        y_pred = self(X).transpose(1, 0).float()
 
-        # return torch.argmax()
-        pass
+        labels = thetas @ y_pred
+
+        if y_pred.dim() == 3:
+            num_classes = labels.shape[2]
+            labels = torch.argmax(labels, 2) # if multiclass
+
+        else:
+            num_classes = 2
+            labels = torch.sign(labels) # if binary
+
+        _, pred = torch.unique(labels, return_counts=True, dim=0)
+
+        return pred / self.mc_draws
 
     def KL(self):
         return self.distribution.KL(self.prior)

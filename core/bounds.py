@@ -2,7 +2,7 @@ import numpy as np
 
 from core.kl_inv import klInvFunction
 
-def mcallester_bound(n, model, risk, delta, coeff=1, verbose=False):
+def mcallester_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None):
 
     kl = model.KL()
     const = np.log(2 * (n**0.5) / delta)
@@ -13,9 +13,12 @@ def mcallester_bound(n, model, risk, delta, coeff=1, verbose=False):
         print(f"Empirical risk={risk}, KL={kl}, const={const}")
         print(f"Bound={bound}\n")
 
+    if monitor:
+        monitor.write(train={"KL": kl.item(), "risk": risk.item()})
+
     return bound 
 
-def seeger_bound(n, model, risk, delta, coeff=1, verbose=False):
+def seeger_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None):
     
     kl = model.KL()
     const = np.log(2 * (n**0.5) / delta)
@@ -25,6 +28,9 @@ def seeger_bound(n, model, risk, delta, coeff=1, verbose=False):
     if verbose:
         print(f"Empirical risk={risk}, KL={kl}, const={const}")
         print(f"Bound={bound}\n")
+
+    if monitor:
+        monitor.write(train={"KL": kl.item(), "risk": risk.item()})
 
     return bound 
 

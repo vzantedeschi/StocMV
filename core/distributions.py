@@ -67,7 +67,7 @@ class DirichletCustom():
 
         y_target, y_pred = batch
 
-        thetas = Dirichlet(torch.exp(self.alpha)).rsample((self.mc_draws,))
+        thetas = self.rsample()
 
         r = loss(y_target, y_pred, thetas)
 
@@ -75,6 +75,10 @@ class DirichletCustom():
             return r.mean()
 
         return r.sum()
+
+    def rsample(self):
+
+        return Dirichlet(torch.exp(self.alpha)).rsample((self.mc_draws,))
 
 class Categorical():
 
@@ -120,6 +124,13 @@ class Categorical():
             return r.mean()
 
         return r.sum()
+
+    def rsample(self):
+
+        exp_theta = torch.exp(self.theta)
+        t = exp_theta / exp_theta.sum()
+
+        return t.unsqueeze(0)
 
 distr_dict = {
     "dirichlet": DirichletCustom,

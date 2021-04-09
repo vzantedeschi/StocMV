@@ -43,6 +43,8 @@ def main(cfg):
 
         train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
 
+        monitor = MonitorMV(SAVE_DIR)
+
         # use exp(log(alpha)) for numerical stability
         beta = torch.ones(M) * cfg.model.prior # prior
 
@@ -52,7 +54,7 @@ def main(cfg):
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta)
+            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta, monitor=monitor)
 
         loss = None
         if cfg.training.risk == "MC":
@@ -64,7 +66,6 @@ def main(cfg):
         train_data = train_y, predictors(train_x)
         test_data = test_y, predictors(test_x)
 
-        monitor = MonitorMV(SAVE_DIR)
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
 
         t1 = time()

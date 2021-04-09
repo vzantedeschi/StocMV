@@ -12,8 +12,11 @@ class MonitorMV():
         self.writer = SummaryWriter(logdir)
         self.normalize = normalize
 
-    def write_all(self, it, posterior, **metrics):
+        self.it = 0
 
+    def write_all(self, it, posterior, gradient, **metrics):
+
+        self.it = it
         if self.normalize:
             p = posterior / posterior.sum()    
         else:
@@ -25,11 +28,22 @@ class MonitorMV():
              "l1": torch.norm(p, p=1),
              }, it)
 
+        self.writer.add_scalars('variables/post_grad', 
+            { 
+             "l2": torch.norm(gradient, p=2),
+             }, it)
+
         self.write(it, **metrics)
 
-    def write(self, it, **metrics):
+    def write(self, it=None, **metrics):
+        
+        if it is None:
+            it = self.it
+
         for key, item in metrics.items():
             self.writer.add_scalars(key, item, it)
+
+        self.it += 1
 
     def close(self, logfile="monitor_scalars.json"):
         self.writer.export_scalars_to_json(self.logdir / logfile)
