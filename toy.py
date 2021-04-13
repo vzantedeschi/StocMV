@@ -34,7 +34,6 @@ def main(cfg):
         deterministic(cfg.training.seed+i)
 
         data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test)     
-
         if cfg.model.pred == "stumps-uniform":
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
 
