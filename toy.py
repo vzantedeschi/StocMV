@@ -18,7 +18,7 @@ from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_d
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.dataset.N_train}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.dataset.N_train}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{int(cfg.training.seed)+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
 
@@ -31,7 +31,7 @@ def main(cfg):
     train_errors, test_errors, bounds, times = [], [], [], []
     for i in range(cfg.num_trials):
         
-        deterministic(cfg.training.seed+i)
+        deterministic(int(cfg.training.seed)+i)
 
         data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test)     
         if cfg.model.pred == "stumps-uniform":
