@@ -15,6 +15,9 @@ from core.utils import deterministic
 from data.datasets import Dataset
 from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
 
+from graphics.plot_predictions import plot_2D
+import matplotlib.pyplot as plt
+
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
@@ -85,6 +88,13 @@ def main(cfg):
         times.append(t2-t1)
         
         monitor.close()
+
+        plot_2D(data, model)
+
+        plt.title(f"{cfg.training.risk} method, {cfg.bound.type} bound, M={cfg.model.M}")
+
+        plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
+        plt.clf()
         
     np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))})
 

@@ -3,7 +3,6 @@ import torch
 
 from core.distributions import distr_dict
 
-
 class MajorityVote(torch.nn.Module):
 
     def __init__(self, voters, prior, mc_draws=10, posterior=None, distr="dirichlet"):
@@ -53,15 +52,17 @@ class MajorityVote(torch.nn.Module):
 
         if y_pred.dim() == 3:
             num_classes = labels.shape[2]
+            c_min, c_max = 0, num_classes - 1
             labels = torch.argmax(labels, 2) # if multiclass
 
         else:
             num_classes = 2
+            c_min, c_max = -1, 1
             labels = torch.sign(labels) # if binary
 
-        _, pred = torch.unique(labels, return_counts=True, dim=0)
+        pred = torch.stack([torch.histc(l, bins=num_classes, min=c_min, max=c_max) / self.mc_draws for l in labels.T])
 
-        return pred / self.mc_draws
+        return pred 
 
     def KL(self):
         return self.distribution.KL(self.prior)
