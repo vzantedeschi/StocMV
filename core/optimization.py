@@ -66,7 +66,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         if monitor:
             monitor.write_all(last_iter+i, torch.exp(model.post), model.post.grad, train={"Train-obj": cost.item()})
             
-def evaluate(dataloader, model, epoch, bounds=None, loss=None, monitor=None, tag="val"):
+def evaluate(dataloader, model, epoch=-1, bounds=None, loss=None, monitor=None, tag="val"):
 
     model.eval()
 
