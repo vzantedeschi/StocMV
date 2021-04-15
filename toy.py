@@ -14,6 +14,7 @@ from core.optimization import train_batch
 from core.utils import deterministic
 from data.datasets import Dataset
 from models.majority_vote import MajorityVote
+from models.random_forest import decision_trees
 from models.stumps import uniform_decision_stumps, custom_decision_stumps
 
 from graphics.plot_predictions import plot_2D
@@ -41,8 +42,18 @@ def main(cfg):
         if cfg.model.pred == "stumps-uniform":
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
 
-        elif cfg.model.pred == "stumps-optimal":
+        elif cfg.model.pred == "stumps-uniform":
             predictors, M = custom_decision_stumps(torch.zeros((2, 2)), torch.tensor([[1, -1], [1, -1]]))
+
+        elif cfg.model.pred == "rf": # random forest
+
+            if cfg.model.tree_depth == "None":
+                cfg.model.tree_depth = None
+
+            predictors, M = decision_trees(cfg.model.M, (data.X_train, data.y_train[:, 0]), max_samples=cfg.model.boostrap, max_depth=cfg.model.tree_depth)
+
+        else:
+            raise NotImplementedError("model.pred should be one the following: [stumps-uniform, stumps-uniform, rf]")
 
         train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
 

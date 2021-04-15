@@ -26,7 +26,11 @@ class BetaInc(torch.autograd.Function):
     def backward(ctx, grad):
         p, q, x = ctx.saved_tensors
 
-        grad_p, grad_q = betaincderp(x, p, q), betaincderq(x, p, q)
+        if p == 0. or q == 0.: # deal with dirac distributions
+            grad_p, grad_q = 0., 0.
+
+        else:
+            grad_p, grad_q = betaincderp(x, p, q), betaincderq(x, p, q)
 
         return grad * grad_p, grad * grad_q, None
 
@@ -49,7 +53,6 @@ class DirichletCustom():
 
     def risk(self, batch, mean=True):
         # 01-loss applied to batch
-
         y_target, y_pred = batch
         exp_alpha = torch.exp(self.alpha)
 
