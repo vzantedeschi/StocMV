@@ -7,8 +7,11 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1000):
     # bisection optimization method
     
     assert mode in ["MIN", "MAX"]
-    assert q > 0 and q < 1, q
-    assert epsilon > 0.0
+    assert epsilon >= 0
+    assert 0. <= q <= 1.
+
+    if q == 1:
+        return p
 
     if(mode == "MAX"):
         p_max, p_min = 1., q

@@ -4,7 +4,7 @@ model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
   prior: 0.1 # param of the Dirichlet prior
   pred: "rf"
-  boostrap: 1.
+  boostrap: 0.5
   tree_depth: None
 
 training:

@@ -103,7 +103,7 @@ def main(cfg):
 
         plot_2D(data, model)
 
-        plt.title(f"{cfg.training.risk} method, {cfg.bound.type} bound, M={cfg.model.M}")
+        plt.title(f"{cfg.model.pred} voters, {cfg.bound.type} bound, M={cfg.model.M}")
 
         plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
         plt.clf()
