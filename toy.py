@@ -13,7 +13,12 @@ from core.monitors import MonitorMV
 from core.optimization import train_batch
 from core.utils import deterministic
 from data.datasets import Dataset
-from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
+from models.majority_vote import MajorityVote
+from models.random_forest import decision_trees
+from models.stumps import uniform_decision_stumps, custom_decision_stumps
+
+from graphics.plot_predictions import plot_2D
+import matplotlib.pyplot as plt
 
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
@@ -37,8 +42,18 @@ def main(cfg):
         if cfg.model.pred == "stumps-uniform":
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
 
-        elif cfg.model.pred == "stumps-optimal":
+        elif cfg.model.pred == "stumps-uniform":
             predictors, M = custom_decision_stumps(torch.zeros((2, 2)), torch.tensor([[1, -1], [1, -1]]))
+
+        elif cfg.model.pred == "rf": # random forest
+
+            if cfg.model.tree_depth == "None":
+                cfg.model.tree_depth = None
+
+            predictors, M = decision_trees(cfg.model.M, (data.X_train, data.y_train[:, 0]), max_samples=cfg.model.boostrap, max_depth=cfg.model.tree_depth)
+
+        else:
+            raise NotImplementedError("model.pred should be one the following: [stumps-uniform, stumps-uniform, rf]")
 
         train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
 
@@ -85,6 +100,13 @@ def main(cfg):
         times.append(t2-t1)
         
         monitor.close()
+
+        plot_2D(data, model)
+
+        plt.title(f"{cfg.model.pred} voters, {cfg.bound.type} bound, M={cfg.model.M}")
+
+        plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
+        plt.clf()
         
     np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))})
 

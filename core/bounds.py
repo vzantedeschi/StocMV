@@ -10,8 +10,8 @@ def mcallester_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None
     bound = coeff * (risk + ((kl + const) / 2 / n)**0.5)
 
     if verbose:
-        print(f"Empirical risk={risk}, KL={kl}, const={const}")
-        print(f"Bound={bound}\n")
+        print(f"Empirical risk={risk.item()}, KL={kl}, const={const}")
+        print(f"Bound={bound.item()}\n")
 
     if monitor:
         monitor.write(train={"KL": kl.item(), "risk": risk.item()})
@@ -26,8 +26,8 @@ def seeger_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None):
     bound = coeff * klInvFunction.apply(risk, (kl + const) / n)
 
     if verbose:
-        print(f"Empirical risk={risk}, KL={kl}, const={const}")
-        print(f"Bound={bound}\n")
+        print(f"Empirical risk={risk.item()}, KL={kl}, const={const}")
+        print(f"Bound={bound.item()}\n")
 
     if monitor:
         monitor.write(train={"KL": kl.item(), "risk": risk.item()})

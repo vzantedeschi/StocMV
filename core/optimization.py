@@ -7,7 +7,7 @@ def train_batch(data, model, optimizer, learner=None, bound=None, loss=None, nb_
     model.train()
 
     n = len(data[0])
-
+            
     pbar = tqdm(range(int(nb_iter)))
     for i in pbar:
         optimizer.zero_grad()
@@ -66,7 +66,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         if monitor:
             monitor.write_all(last_iter+i, torch.exp(model.post), model.post.grad, train={"Train-obj": cost.item()})
             
-def evaluate(dataloader, model, epoch, bounds=None, loss=None, monitor=None, tag="val"):
+def evaluate(dataloader, model, epoch=-1, bounds=None, loss=None, monitor=None, tag="val"):
 
     model.eval()
 
