@@ -13,7 +13,8 @@ from core.optimization import train_batch
 from core.utils import deterministic
 from data.datasets import Dataset
 from learner.c_bound_joint_learner import CBoundJointLearner
-from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
+from models.majority_vote import MajorityVote
+from models.stumps import uniform_decision_stumps
 
 @hydra.main(config_path='config/toy_oracle.yaml')
 def main(cfg):

@@ -13,7 +13,8 @@ from core.monitors import MonitorMV
 from core.optimization import train_batch
 from core.utils import deterministic
 from data.datasets import Dataset
-from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
+from models.majority_vote import MajorityVote
+from models.stumps import uniform_decision_stumps, custom_decision_stumps
 
 from graphics.plot_predictions import plot_2D
 import matplotlib.pyplot as plt

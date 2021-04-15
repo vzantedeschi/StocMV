@@ -13,7 +13,8 @@ from core.losses import moment_loss
 from core.monitors import MonitorMV
 from core.utils import deterministic
 from data.datasets import Dataset, TorchDataset
-from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
+from models.majority_vote import MajorityVote
+from models.stumps import uniform_decision_stumps
 
 from training_routines import stochastic_routine
 
