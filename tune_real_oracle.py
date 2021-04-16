@@ -14,7 +14,8 @@ from core.losses import moment_loss
 from core.monitors import MonitorMV
 from core.utils import deterministic
 from data.datasets import Dataset, TorchDataset
-from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
+from models.majority_vote import MajorityVote
+from models.stumps import uniform_decision_stumps
 
 from training_routines import stochastic_routine
 
@@ -49,7 +50,7 @@ def main(cfg):
     
     def objective(trial):
 
-        LR = trial.suggest_loguniform('LR', 1e-6, 1)
+        LR = trial.suggest_loguniform('LR', 1e-4, 1.)
         BATCH = 2**trial.suggest_int('BATCH', 6, 11)
 
         trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH, num_workers=cfg.num_workers, shuffle=True)
@@ -64,14 +65,15 @@ def main(cfg):
         optimizer = Adam(model.parameters(), lr=LR)
         # init learning rate scheduler
         lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
-
-        _, best_val_bound, *_ = stochastic_routine(trainloader, valloader, trainvalloader, None, model, optimizer, lr_scheduler, bound, cfg.bound.type, loss=loss, loss_eval=loss, num_epochs=cfg.training.num_epochs)
-        
+        try:
+            _, best_val_bound, *_ = stochastic_routine(trainloader, valloader, trainvalloader, None, model, optimizer, lr_scheduler, bound, cfg.bound.type, loss=loss, loss_eval=loss, num_epochs=cfg.training.num_epochs)
+        except:
+            best_val_bound = 1.
         return best_val_bound
 
     # Set up the median stopping rule as the pruning condition.
     study = optuna.create_study(study_name=cfg.dataset)
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=20)
 
     print(study.best_params, study.best_value)
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))
