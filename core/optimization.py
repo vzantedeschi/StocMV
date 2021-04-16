@@ -7,7 +7,7 @@ def train_batch(data, model, optimizer, learner=None, bound=None, loss=None, nb_
     model.train()
 
     n = len(data[0])
-            
+
     pbar = tqdm(range(int(nb_iter)))
     for i in pbar:
         optimizer.zero_grad()

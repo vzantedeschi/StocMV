@@ -2,6 +2,7 @@ import numpy as np
 
 from sklearn import datasets
 from sklearn.preprocessing import StandardScaler
+from sklearn.utils import shuffle
 
 def load_normals(n_train, n_test, means, scales):
 
@@ -43,5 +44,7 @@ def toy_dataset(name, n_train, n_test, **kwargs):
 
     else:
         X_train, y_train, X_test, y_test = DATASETS[name](n_train, n_test)
-        
+    
+    X_train, y_train = shuffle(X_train, y_train)
+    
     return dict(X_train=X_train, y_train=y_train, X_test=X_test, y_test=y_test)

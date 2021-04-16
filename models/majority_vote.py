@@ -12,17 +12,29 @@ class MajorityVote(torch.nn.Module):
         if distr not in ["dirichlet", "categorical"]:
             raise NotImplementedError
 
-        assert all(prior > 0), "all prior parameters must be positive"
+        if len(prior) == 2:
+            assert all(prior[0] >= 0) and all(prior[1] >= 0), "all prior parameters must be nonnegative"
+            assert prior[0].shape == prior[1].shape, "two priors must have the same shape"
+
+            self.informed_prior = True
+            self.num_voters = len(prior[0])
+
+        else:
+            assert all(prior >= 0), "all prior parameters must be nonnegative"
+            self.informed_prior = False
+            self.num_voters = len(prior)
 
         self.prior = prior
         self.voters = voters
         self.mc_draws = mc_draws
 
         if posterior is not None:
-            assert all(posterior > 0.), "all posterior parameters must be positive"
+            assert all(posterior >= 0.), "all posterior parameters must be nonnegative"
             self.post = posterior
+
         else:
-            self.post = torch.rand(prior.shape) * 2 + 1e-9 # uniform draws in (0, 2]
+
+            self.post = torch.rand(self.num_voters) * 2 + 1e-9 # uniform draws in (0, 2]
 
         if distr == "categorical": # make sure params sum to 1
             self.post /= self.post.sum()
@@ -65,4 +77,8 @@ class MajorityVote(torch.nn.Module):
         return pred 
 
     def KL(self):
+
+        if self.informed_prior:
+            return self.distribution.KL(self.prior[0]) + self.distribution.KL(self.prior[1])
+
         return self.distribution.KL(self.prior)

@@ -2,10 +2,17 @@ import numpy as np
 
 from core.kl_inv import klInvFunction
 
-def mcallester_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None):
+def mcallester_bound(n, model, risk, delta, m=None, coeff=1, verbose=False, monitor=None):
 
     kl = model.KL()
-    const = np.log(2 * (n**0.5) / delta)
+
+    if model.informed_prior:
+        
+        assert m, "should specify <m>: num of instances for learning the prior"
+        const = np.log(4 * (m*(n-m))**0.5 / delta)
+
+    else:
+        const = np.log(2 * (n**0.5) / delta)
 
     bound = coeff * (risk + ((kl + const) / 2 / n)**0.5)
 
@@ -18,10 +25,17 @@ def mcallester_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None
 
     return bound 
 
-def seeger_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None):
+def seeger_bound(n, model, risk, delta, m=None, coeff=1, verbose=False, monitor=None):
     
     kl = model.KL()
-    const = np.log(2 * (n**0.5) / delta)
+
+    if model.informed_prior:
+        
+        assert m, "should specify <m>: num of instances for learning the prior"
+        const = np.log(4 * (m*(n-m))**0.5 / delta)
+
+    else:
+        const = np.log(2 * (n**0.5) / delta)
 
     bound = coeff * klInvFunction.apply(risk, (kl + const) / n)
 
@@ -34,7 +48,8 @@ def seeger_bound(n, model, risk, delta, coeff=1, verbose=False, monitor=None):
 
     return bound 
 
+
 BOUNDS = {
     "mcallester": mcallester_bound,
-    "seeger": seeger_bound
+    "seeger": seeger_bound,
 }

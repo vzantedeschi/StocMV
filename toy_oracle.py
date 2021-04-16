@@ -14,7 +14,7 @@ from core.optimization import train_batch
 from core.utils import deterministic
 from data.datasets import Dataset
 from models.majority_vote import MajorityVote
-from models.random_forest import decision_trees
+from models.random_forest import two_forests
 from models.stumps import uniform_decision_stumps
 
 from graphics.plot_predictions import plot_2D
@@ -36,25 +36,35 @@ def main(cfg):
 
         data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test)     
 
+        m = None
         if cfg.model.pred == "stumps-uniform":
+            
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
+            prior = torch.ones(M) / M # uniform prior
+
 
         elif cfg.model.pred == "stumps-optimal":
             predictors, M = custom_decision_stumps(torch.zeros((2, 2)), torch.tensor([[1, -1], [1, -1]]))
+            prior = torch.ones(M) / M # uniform prior
 
         elif cfg.model.pred == "rf": # random forest
 
             if cfg.model.tree_depth == "None":
                 cfg.model.tree_depth = None
 
-            predictors, M = decision_trees(cfg.model.M, (data.X_train, data.y_train[:, 0]), max_samples=cfg.model.boostrap, max_depth=cfg.model.tree_depth)
+            m = int(cfg.model.m * cfg.dataset.N_train)
+
+            predictors, M = two_forests(cfg.model.M, m, data.X_train, data.y_train[:, 0], max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=True)
+
+            prior1 = torch.ones(M) / M
+            prior2 = torch.ones(M) / M
+
+            prior = (prior1, prior2)
 
         else:
             raise NotImplementedError("model.pred should be one the following: [stumps-uniform, stumps-uniform, rf]")
 
         train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
-
-        prior = torch.ones(M) / M # uniform prior
 
         model = MajorityVote(predictors, prior, distr="categorical")
         
@@ -64,7 +74,7 @@ def main(cfg):
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda d, m, r: BOUNDS[cfg.bound.type](d, m, r, cfg.bound.delta, coeff=2**cfg.training.risk)
+            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=2**cfg.training.risk)
 
         # get voter predictions
         train_data = train_y, predictors(train_x)
@@ -84,7 +94,7 @@ def main(cfg):
 
         print(f"Test error: {test_error.item()}")
         
-        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_risk, cfg.bound.delta, coeff=2**cfg.training.risk, verbose=True))
+        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_risk, cfg.bound.delta, m=m, coeff=2**cfg.training.risk, verbose=True))
         
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())

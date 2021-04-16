@@ -11,7 +11,7 @@ def trees_predict(x, trees, binary=True):
 
     return pred
 
-def decision_trees(M, data, max_samples=1., max_features="sqrt", max_depth=None, binary=True):
+def decision_trees(M, data, max_samples=1., max_features="sqrt", max_depth=None):
 
     bootstrap = True
     if max_samples == 1.:
@@ -21,6 +21,17 @@ def decision_trees(M, data, max_samples=1., max_features="sqrt", max_depth=None,
     forest = RandomForestClassifier(n_estimators=M, criterion="gini", max_depth=max_depth, max_features=max_features, bootstrap=bootstrap, max_samples=max_samples, n_jobs=-1)
     forest.fit(*data)
 
-    trees = lambda x: trees_predict(x, forest.estimators_, binary) 
+    return forest.estimators_, M
 
-    return trees, M
+def two_forests(M, m, X, y, max_samples, max_depth, binary):
+
+    # learn one prior
+    predictors1, M1 = decision_trees(M, (X[:m], y[:m]), max_samples=max_samples, max_depth=max_depth)
+
+    # learn the other prior
+    predictors2, M2 = decision_trees(M, (X[m:], y[m:]), max_samples=max_samples, max_depth=max_depth)
+
+    M = M1 + M2
+    predictors = lambda x: trees_predict(x, predictors1 + predictors2, binary=binary)
+
+    return predictors, M
