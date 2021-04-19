@@ -22,7 +22,7 @@ from training_routines import stochastic_routine
 @hydra.main(config_path='config/real_oracle.yaml')
 def main(cfg):
 
-    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/optuna/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.pred}/seed={cfg.training.seed}/"
+    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/optuna/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/seed={cfg.training.seed}/"
 
     ROOT_DIR = Path(ROOT_DIR)
     ROOT_DIR.mkdir(parents=True, exist_ok=True)
