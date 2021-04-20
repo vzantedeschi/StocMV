@@ -28,7 +28,8 @@ def main(cfg):
     models = {
         "GaussianNB": (GaussianNB, {}),
         "Adaboost": (AdaBoostClassifier, {"n_estimators": cfg.model.M}),
-        "FrequentistNB": (NaiveBayes, {"frequentist": True})
+        "FrequentistNB": (NaiveBayes, {"frequentist": True}),
+        "BayesianNB": (NaiveBayes, {"frequentist": False}),
     }
 
     train_errors, test_errors = [], []
@@ -39,7 +40,7 @@ def main(cfg):
         data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test)   
 
 
-        if cfg.model.type == "FrequentistNB":
+        if cfg.model.type in ["FrequentistNB", "BayesianNB"]:
 
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
             model = models[cfg.model.type][0](voters=predictors, **models[cfg.model.type][1])

@@ -22,7 +22,11 @@ def plot_2D(data, model, bound=None, res=0.02, margin=0.1, classes=[-1, 1]):
 
     try: # torch model
         y_pred = model.predict(torch.from_numpy(test_x))
-        y_pred = torch.argmax(y_pred, 1).detach().numpy()
+
+        if y_pred.dim() == 2:
+            y_pred = torch.argmax(y_pred, 1)
+
+        y_pred = y_pred.detach().numpy()
 
     except: # numpy model
         y_pred = model.predict(test_x)
