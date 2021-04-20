@@ -2,8 +2,13 @@ import numpy as np
 import torch
 
 import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
 
-def plot_2D(data, model, res=0.02, margin=0.1):
+colors = ["#f0f9e8", "#bae4bc", "#7bccc4", "#43a2ca", "#0868ac"]
+markers = ["o", "^"]
+cmap = ListedColormap(colors, name="custom")
+
+def plot_2D(data, model, bound=None, res=0.02, margin=0.1, classes=[-1, 1]):
 
     # create a mesh to plot in (points spread uniformly over the space)
     H = .02  # step size in the mesh
@@ -20,11 +25,14 @@ def plot_2D(data, model, res=0.02, margin=0.1):
     y_pred = y_pred.reshape(xx.shape)
 
     # plot leaf boundaries
-    plt.contourf(xx, yy, y_pred, cmap=plt.cm.tab20c, alpha=0.6)
+    plt.contourf(xx, yy, y_pred, cmap=cmap, alpha=0.6)
 
-    # plot training points with true labels
-    plt.scatter(data.X_train[data.y_train[:, 0] == -1][:,0], data.X_train[data.y_train[:, 0] == -1][:,1], s=20, marker="o", c='k')
-    plt.scatter(data.X_train[data.y_train[:, 0] == 1][:,0], data.X_train[data.y_train[:, 0] == 1][:,1], s=20, marker="^", c='k')
+    for m, c in zip(markers, classes):
+        # plot training points with true labels
+        plt.scatter(data.X_train[data.y_train[:, 0] == c][:,0], data.X_train[data.y_train[:, 0] == c][:,1], s=20, marker=m, c="w", edgecolors="k")
 
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())
+
+    if bound:
+        plt.text(xx.max() - .1, yy.min() + .3, ('%.2f' % bound).lstrip('0'), size=15, horizontalalignment='right')
