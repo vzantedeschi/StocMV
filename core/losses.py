@@ -13,3 +13,9 @@ def moment_loss(y_target, y_pred, theta, order=1):
     w_theta = torch.where(y_target != y_pred, theta, torch.zeros(1)).sum(1)
 
     return w_theta ** order
+
+def exp_loss(y_target, y_pred, theta, c=1):
+
+    w_theta = torch.where(y_target != y_pred, theta, torch.zeros(1)).sum(1)
+
+    return torch.exp(c * (w_theta - 0.5))

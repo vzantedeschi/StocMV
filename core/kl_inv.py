@@ -8,10 +8,7 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1000):
     
     assert mode in ["MIN", "MAX"]
     assert epsilon >= 0
-    assert 0. <= q <= 1.
-
-    if q == 1:
-        return p
+    assert 0. <= q < 1., q
 
     if(mode == "MAX"):
         p_max, p_min = 1., q
