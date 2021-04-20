@@ -2,15 +2,16 @@ num_trials: 10
 
 model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
-  pred: "rf"
+  pred: "stumps-uniform"
   boostrap: 0.5
   tree_depth: None
   
 training:
   seed: 23032021
-  lr: 0.5
+  lr: 0.1
   iter: 1e3
-  risk: 1 # or 2
+  risk: 1 # or 2 or exp
+  risk_c: 3
   opt_bound: True
 
 dataset:

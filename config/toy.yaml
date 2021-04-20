@@ -2,14 +2,14 @@ num_trials: 10
 
 model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
-  prior: 0.1 # param of the Dirichlet prior
-  pred: "rf"
+  prior: 1 # param of the Dirichlet prior
+  pred: "stumps-uniform"
   boostrap: 0.5
   tree_depth: None
 
 training:
   seed: 23032021
-  lr: 0.5
+  lr: 0.1
   iter: 1e3
   risk: "exact" # or MC
   opt_bound: True

@@ -20,8 +20,13 @@ def plot_2D(data, model, bound=None, res=0.02, margin=0.1, classes=[-1, 1]):
     # estimate learned class boundaries
     test_x = np.c_[xx.ravel(), yy.ravel()]
 
-    y_pred = model.predict(torch.from_numpy(test_x))
-    y_pred = torch.argmax(y_pred, 1).detach().numpy()
+    try: # torch model
+        y_pred = model.predict(torch.from_numpy(test_x))
+        y_pred = torch.argmax(y_pred, 1).detach().numpy()
+
+    except: # numpy model
+        y_pred = model.predict(test_x)
+
     y_pred = y_pred.reshape(xx.shape)
 
     # plot leaf boundaries
