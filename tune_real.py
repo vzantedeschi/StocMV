@@ -61,9 +61,9 @@ def main(cfg):
         print(f"lr={LR}, batch={BATCH}")
 
         trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH, num_workers=cfg.num_workers, shuffle=True)
-        valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH*2, num_workers=cfg.num_workers, shuffle=False)
+        valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
 
-        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=BATCH*2, num_workers=cfg.num_workers)
+        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=4096, num_workers=cfg.num_workers)
 
         beta = torch.ones(M) * cfg.model.prior # prior
         

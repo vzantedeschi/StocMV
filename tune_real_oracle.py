@@ -54,9 +54,9 @@ def main(cfg):
         BATCH = 2**trial.suggest_int('BATCH', 6, 11)
 
         trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH, num_workers=cfg.num_workers, shuffle=True)
-        valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH*2, num_workers=cfg.num_workers, shuffle=False)
+        valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
 
-        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=BATCH*2, num_workers=cfg.num_workers)
+        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=4096, num_workers=cfg.num_workers)
 
         beta = torch.ones(M) / M # prior
         
