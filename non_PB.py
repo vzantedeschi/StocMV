@@ -16,10 +16,10 @@ from data.datasets import Dataset
 from models.naive_bayes import NaiveBayes
 from models.stumps import uniform_decision_stumps
 
-@hydra.main(config_path='config/toy_scikit.yaml')
+@hydra.main(config_path='config/non_PB.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.dataset.N_train}/{cfg.model.type}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.model.type}/seeds={cfg.training.seed}-{cfg.training.seed+cfg.num_trials}/"
     SAVE_DIR = Path(SAVE_DIR)
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -32,17 +32,23 @@ def main(cfg):
         "BayesianNB": (NaiveBayes, {"frequentist": False}),
     }
 
+    if cfg.dataset.distr in ["normals", "moons"]:
+        load_params = {"n_train": cfg.dataset.N_train, "n_test": cfg.dataset.N_test}
+        plot = True
+    else:
+        load_params = {"normalize": True, "data_path": Path(hydra.utils.get_original_cwd()) / "data"}
+        plot = False
+
     train_errors, test_errors = [], []
     for i in range(cfg.num_trials):
         
         deterministic(cfg.training.seed+i)
 
-        data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test)   
-
+        data = Dataset(cfg.dataset.distr, **load_params) 
 
         if cfg.model.type in ["FrequentistNB", "BayesianNB"]:
 
-            predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
+            predictors, M = uniform_decision_stumps(cfg.model.M, data.X_train.shape[1], data.X_train.min(0), data.X_train.max(0))
             model = models[cfg.model.type][0](voters=predictors, **models[cfg.model.type][1])
 
             train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
@@ -53,7 +59,7 @@ def main(cfg):
 
             train_x, train_y, test_x, test_y = data.X_train, data.y_train, data.X_test, data.y_test
 
-        model.fit(train_x, train_y)
+        model.fit(train_x, train_y[:, 0])
 
         train_pred = model.predict(train_x)
         test_pred = model.predict(test_x)
@@ -64,14 +70,15 @@ def main(cfg):
         test_errors.append(test_error)
         train_errors.append(train_error)
 
-        plot_2D(data, model)
+        if plot:
+            plot_2D(data, model)
 
-        plt.title(f"stumps, M={cfg.model.M}")
+            plt.title(f"stumps, M={cfg.model.M}")
 
-        plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}-M={M}.pdf", bbox_inches='tight', transparent=True)
-        plt.clf()
+            plt.savefig(SAVE_DIR / f"n={cfg.dataset.N_train}-M={M}.pdf", bbox_inches='tight', transparent=True)
+            plt.clf()
 
-    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors))})
+    np.save(SAVE_DIR / f"err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors))})
 
 
 if __name__ == "__main__":

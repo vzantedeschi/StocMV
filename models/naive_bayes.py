@@ -15,7 +15,7 @@ class NaiveBayes():
         n = len(X)
         y_pred = self.voters(X)
 
-        num_corrects = torch.where(y == y_pred, torch.ones(1), torch.zeros(1)).sum(0)
+        num_corrects = torch.where(y[:, None] == y_pred, torch.ones(1), torch.zeros(1)).sum(0)
 
         if self.frequentist:
             p = num_corrects / n
