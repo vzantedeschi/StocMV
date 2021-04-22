@@ -26,12 +26,12 @@ def decision_trees(M, data, max_samples=1., max_features="sqrt", max_depth=None)
 def two_forests(M, m, X, y, max_samples, max_depth, binary):
 
     # learn one prior
-    predictors1, M1 = decision_trees(M, (X[:m], y[:m]), max_samples=max_samples, max_depth=max_depth)
+    trees1, _ = decision_trees(M, (X[:m], y[:m]), max_samples=max_samples, max_depth=max_depth)
 
     # learn the other prior
-    predictors2, M2 = decision_trees(M, (X[m:], y[m:]), max_samples=max_samples, max_depth=max_depth)
+    trees2, _ = decision_trees(M, (X[m:], y[m:]), max_samples=max_samples, max_depth=max_depth)
 
-    M = M1 + M2
-    predictors = lambda x: trees_predict(x, predictors1 + predictors2, binary=binary)
+    predictors1 = lambda x: trees_predict(x, trees1, binary=binary)
+    predictors2 = lambda x: trees_predict(x, trees2, binary=binary)
 
-    return predictors, M
+    return (predictors1, predictors2), M

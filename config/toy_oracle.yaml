@@ -1,17 +1,24 @@
 num_trials: 10
 
 model:
+<<<<<<< HEAD
   M: 1 # number of predictors, if stumps: 2*M per dimension
   pred: "rf"
   bootstrap: 0.5
+=======
+  M: 4 # number of predictors, if stumps: 2*M per dimension
+  pred: "stumps-uniform"
+  boostrap: 0.5
+>>>>>>> torch
   tree_depth: None
   m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
 
 training:
   seed: 23032021
-  lr: 0.5
+  lr: 0.1
   iter: 1e3
-  risk: 1 # or 2
+  risk: 1 # or 2 or exp
+  risk_c: 3
   opt_bound: True
 
 dataset:

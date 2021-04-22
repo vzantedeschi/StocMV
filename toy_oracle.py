@@ -8,7 +8,7 @@ import torch
 from torch.optim import Adam
 
 from core.bounds import BOUNDS
-from core.losses import moment_loss
+from core.losses import moment_loss, exp_loss
 from core.monitors import MonitorMV
 from core.optimization import train_batch
 from core.utils import deterministic
@@ -68,13 +68,23 @@ def main(cfg):
 
         model = MajorityVote(predictors, prior, distr="categorical")
         
-        loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk)
+        if cfg.training.risk in [1, 2]:
+            loss = lambda x, y, z: moment_loss(x, y, z, order=cfg.training.risk)
+            coeff = 2**cfg.training.risk
+
+        elif cfg.training.risk == "exp":
+            loss = lambda x, y, z: exp_loss(x, y, z, c=cfg.training.risk_c)
+            coeff = np.exp(cfg.training.risk_c / 2) - 1
+
+        else:
+            raise NotImplementedError()
 
         bound = None
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=2**cfg.training.risk)
+
+        bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, coeff=coeff)
 
         # get voter predictions
         train_data = train_y, predictors(train_x)
@@ -84,7 +94,7 @@ def main(cfg):
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
 
         t1 = time()
-        train_batch(train_data, model, optimizer, bound=bound, loss=loss, nb_iter=cfg.training.iter, monitor=monitor)
+        train_batch(cfg.dataset.N_train, train_data, model, optimizer, bound=bound, loss=loss, nb_iter=cfg.training.iter, monitor=monitor)
         t2 = time()
         print(f"{t2-t1}s for {cfg.training.iter} iterations")
 
@@ -94,7 +104,7 @@ def main(cfg):
 
         print(f"Test error: {test_error.item()}")
         
-        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_risk, cfg.bound.delta, m=m, coeff=2**cfg.training.risk, verbose=True))
+        b = float(BOUNDS[cfg.bound.type](len(train_data[0]), model, train_risk, cfg.bound.delta, coeff=coeff, verbose=True))
         
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
@@ -103,9 +113,9 @@ def main(cfg):
         
         monitor.close()
         
-        plot_2D(data, model)
+        plot_2D(data, model, bound=b)
 
-        plt.title(f"{cfg.model.pred} voters, {cfg.bound.type} bound, M={cfg.model.M}")
+        plt.title(f"{cfg.model.pred}, {cfg.bound.type} bound, M={M}")
 
         plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
         plt.clf()

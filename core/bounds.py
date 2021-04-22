@@ -1,12 +1,13 @@
 import numpy as np
 
 from core.kl_inv import klInvFunction
+from models.majority_vote import MultipleMajorityVote
 
 def mcallester_bound(n, model, risk, delta, m=None, coeff=1, verbose=False, monitor=None):
 
     kl = model.KL()
 
-    if model.informed_prior:
+    if isinstance(model, MultipleMajorityVote): # informed priors
         
         assert m, "should specify <m>: num of instances for learning the prior"
         const = np.log(4 * (m*(n-m))**0.5 / delta)
@@ -26,10 +27,10 @@ def mcallester_bound(n, model, risk, delta, m=None, coeff=1, verbose=False, moni
     return bound 
 
 def seeger_bound(n, model, risk, delta, m=None, coeff=1, verbose=False, monitor=None):
-    
+
     kl = model.KL()
 
-    if model.informed_prior:
+    if isinstance(model, MultipleMajorityVote):
         
         assert m, "should specify <m>: num of instances for learning the prior"
         const = np.log(4 * (m*(n-m))**0.5 / delta)

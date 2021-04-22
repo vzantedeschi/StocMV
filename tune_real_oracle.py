@@ -14,17 +14,18 @@ from core.losses import moment_loss
 from core.monitors import MonitorMV
 from core.utils import deterministic
 from data.datasets import Dataset, TorchDataset
-from models.stochastic_mv import MajorityVote, uniform_decision_stumps, custom_decision_stumps
+from models.majority_vote import MajorityVote
+from models.stumps import uniform_decision_stumps
 
 from training_routines import stochastic_routine
 
 @hydra.main(config_path='config/real_oracle.yaml')
 def main(cfg):
 
-    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/optuna/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/seed={cfg.training.seed}/"
+    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/optuna/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/seed={cfg.training.seed}/"
 
     ROOT_DIR = Path(ROOT_DIR)
-
+    ROOT_DIR.mkdir(parents=True, exist_ok=True)
     print("results will be saved in:", ROOT_DIR.resolve()) 
 
     data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")
@@ -36,31 +37,26 @@ def main(cfg):
 
         print(f"Optimize {cfg.bound.type} bound")   
         if cfg.bound.stochastic:
-            print("Evaluate bound regularizations over mini-batch")
+            print("Evaluate bound over mini-batch")
             bound = lambda n, m, r: BOUNDS[cfg.bound.type](n, m, r, cfg.bound.delta, coeff=2**cfg.training.risk)
 
         else:
-            print("Evaluate bound regularizations over whole train+val set")
+            print("Evaluate bound over whole train+val set")
             bound = lambda n, m, r: BOUNDS[cfg.bound.type](len(data.X_train) + len(data.X_valid), m, r, cfg.bound.delta, coeff=2**cfg.training.risk)
 
     deterministic(cfg.training.seed)
 
+    predictors, M = uniform_decision_stumps(cfg.model.M, data.X_train.shape[1], data.X_train.min(0), data.X_train.max(0))
+    
     def objective(trial):
 
-        M = 2**trial.suggest_int('M', 1, 5)
-        LR = trial.suggest_loguniform('LR', 1e-6, 1)
+        LR = trial.suggest_loguniform('LR', 1e-4, 1.)
         BATCH = 2**trial.suggest_int('BATCH', 6, 11)
 
-        save_dir = ROOT_DIR / f"M={M}/lr={LR}/batch={BATCH}"
-        save_dir.mkdir(parents=True, exist_ok=True)
-        print("trial saved in", save_dir)
-
-        predictors, M = uniform_decision_stumps(M, data.X_train.shape[1], data.X_train.min(0), data.X_train.max(0))
-
         trainloader = DataLoader(TorchDataset(data.X_train, data.y_train), batch_size=BATCH, num_workers=cfg.num_workers, shuffle=True)
-        valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=BATCH*2, num_workers=cfg.num_workers, shuffle=False)
+        valloader = DataLoader(TorchDataset(data.X_valid, data.y_valid), batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
 
-        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=BATCH*2, num_workers=cfg.num_workers)
+        trainvalloader = DataLoader(TorchDataset(np.vstack([data.X_train, data.X_valid]), np.vstack([data.y_train, data.y_valid])), batch_size=4096, num_workers=cfg.num_workers)
 
         beta = torch.ones(M) / M # prior
         
@@ -69,14 +65,15 @@ def main(cfg):
         optimizer = Adam(model.parameters(), lr=LR)
         # init learning rate scheduler
         lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
-
-        _, best_val_bound, *_ = stochastic_routine(trainloader, valloader, trainvalloader, None, model, optimizer, lr_scheduler, bound, cfg.bound.type, loss=loss, loss_eval=loss, num_epochs=cfg.training.num_epochs)
-        
+        try:
+            _, best_val_bound, *_ = stochastic_routine(trainloader, valloader, trainvalloader, None, model, optimizer, lr_scheduler, bound, cfg.bound.type, loss=loss, loss_eval=loss, num_epochs=cfg.training.num_epochs)
+        except:
+            best_val_bound = 1.
         return best_val_bound
 
     # Set up the median stopping rule as the pruning condition.
     study = optuna.create_study(study_name=cfg.dataset)
-    study.optimize(objective, n_trials=100)
+    study.optimize(objective, n_trials=20)
 
     print(study.best_params, study.best_value)
     df = study.trials_dataframe(attrs=('number', 'value', 'params', 'state'))

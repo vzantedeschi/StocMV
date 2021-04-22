@@ -4,11 +4,10 @@ import numpy as np
 # ------------------------------------------------------------------------------- STUMPS
 # support only binary classification
 def stumps_predict(x, thresholds, signs):
-
     return (signs * (1 - 2*(x[..., None] > thresholds))).reshape((len(x), -1))
 
 def uniform_decision_stumps(M, d, min_v, max_v):
-
+    
     thresholds = torch.from_numpy(np.linspace(min_v, max_v, M, endpoint=False, axis=-1)).float() # get M evenly spaced thresholds in the interval [min_v, max_v] per dimension
 
     sigs = torch.ones((d, M * 2))

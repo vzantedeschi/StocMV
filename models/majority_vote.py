@@ -12,24 +12,15 @@ class MajorityVote(torch.nn.Module):
         if distr not in ["dirichlet", "categorical"]:
             raise NotImplementedError
 
-        if len(prior) == 2:
-            assert all(prior[0] >= 0) and all(prior[1] >= 0), "all prior parameters must be nonnegative"
-            assert prior[0].shape == prior[1].shape, "two priors must have the same shape"
-
-            self.informed_prior = True
-            self.num_voters = len(prior[0])
-
-        else:
-            assert all(prior >= 0), "all prior parameters must be nonnegative"
-            self.informed_prior = False
-            self.num_voters = len(prior)
+        assert all(prior > 0), "all prior parameters must be positive"
+        self.num_voters = len(prior)
 
         self.prior = prior
         self.voters = voters
         self.mc_draws = mc_draws
 
         if posterior is not None:
-            assert all(posterior >= 0.), "all posterior parameters must be nonnegative"
+            assert all(posterior > 0), "all posterior parameters must be positive"
             self.post = posterior
 
         else:
@@ -78,7 +69,52 @@ class MajorityVote(torch.nn.Module):
 
     def KL(self):
 
-        if self.informed_prior:
-            return self.distribution.KL(self.prior[0]) + self.distribution.KL(self.prior[1])
-
         return self.distribution.KL(self.prior)
+
+    def get_post(self):
+        return self.post
+
+    def get_post_grad(self):
+        return self.post.grad
+
+class MultipleMajorityVote(torch.nn.Module):
+
+    def __init__(self, voter_sets, priors, weights, mc_draws=10, posteriors=None, distr="dirichlet"):
+
+        super(MultipleMajorityVote, self).__init__()
+
+        assert len(voter_sets) == len(priors), "must specify same number of voter_sets and priors"
+        assert sum(weights) == 1., weights
+
+        if posteriors is not None:
+            assert len(priors) == len(posteriors), "must specify same number of priors and posteriors"
+
+            self.mvs = torch.nn.ModuleList([MajorityVote(voters, prior, mc_draws=mc_draws, posterior=post, distr=distr) for voters, prior, post in zip(voter_sets, priors, posteriors)])
+
+        else:
+            self.mvs = torch.nn.ModuleList([MajorityVote(voters, prior, mc_draws=mc_draws, distr=distr) for voters, prior in zip(voter_sets, priors)])
+
+        self.weights = weights
+
+    def forward(self, xs):
+
+        return [mv(x) for mv, x in zip(self.mvs, xs)]
+
+    def risk(self, batchs, loss=None, mean=True):
+        risk = sum([w * mv.risk(batch, loss, mean) for mv, w, batch in zip(self.mvs, self.weights, batchs)])
+
+        return risk
+
+    def predict(self, X):
+        
+        return sum([w * mv.predict(X) for mv, w in zip(self.mvs, self.weights)])
+
+    def KL(self):
+
+        return sum([w * mv.KL() for mv, w in zip(self.mvs, self.weights)])
+
+    def get_post(self):
+        return torch.cat([mv.post for mv in self.mvs], 0)
+
+    def get_post_grad(self):
+        return torch.cat([mv.post.grad for mv in self.mvs], 0)

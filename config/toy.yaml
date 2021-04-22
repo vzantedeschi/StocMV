@@ -2,7 +2,7 @@ num_trials: 10
 
 model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
-  prior: 0.1 # param of the Dirichlet prior
+  prior: 1 # param of the Dirichlet prior
   pred: "rf"
   bootstrap: 0.5
   tree_depth: None
@@ -10,18 +10,18 @@ model:
 
 training:
   seed: 23032021
-  lr: 0.5
   iter: 1e3
   risk: "exact" # or MC
   opt_bound: True
   sigmoid_c: 100
   MC_draws: 10
+  lr: 0.1
 
 dataset:
   distr: normals # or moons
-  N_train: 50 # number of training points per class
+  N_train: 100 # number of training points per class
   N_test: 1000 # number of test points per class
 
 bound:
   delta: 0.05
-  type: "mcallester"
+  type: "seeger"

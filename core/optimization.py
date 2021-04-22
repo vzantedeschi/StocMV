@@ -2,11 +2,9 @@ import torch
 
 from tqdm import tqdm
 
-def train_batch(data, model, optimizer, learner=None, bound=None, loss=None, nb_iter=1e4, monitor=None):
+def train_batch(n, data, model, optimizer, learner=None, bound=None, loss=None, nb_iter=1e4, monitor=None):
 
     model.train()
-
-    n = len(data[0])
 
     pbar = tqdm(range(int(nb_iter)))
     for i in pbar:
@@ -27,7 +25,7 @@ def train_batch(data, model, optimizer, learner=None, bound=None, loss=None, nb_
         optimizer.step()
 
         if monitor:
-            monitor.write_all(i, torch.exp(model.post), model.post.grad, train={"Train-obj": cost.item()})
+            monitor.write_all(i, torch.exp(model.get_post()), model.get_post_grad(), train={"Train-obj": cost.item()})
 
 def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=None, loss=None, monitor=None):
 
@@ -64,7 +62,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         optimizer.step()
         
         if monitor:
-            monitor.write_all(last_iter+i, torch.exp(model.post), model.post.grad, train={"Train-obj": cost.item()})
+            monitor.write_all(last_iter+i, torch.exp(model.get_post()), model.get_post_grad(), train={"Train-obj": cost.item()})
             
 def evaluate(dataloader, model, epoch=-1, bounds=None, loss=None, monitor=None, tag="val"):
 

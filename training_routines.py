@@ -45,6 +45,6 @@ def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model
     if loss_eval is not None:
         train_error = evaluate(trainvalloader, best_model, epoch=e, tag="train-val")
 
-        res = (*res, train_error, t2-t1)
+        res = (*res, train_error)
 
     return (*res, t2-t1)
