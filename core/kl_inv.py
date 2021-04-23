@@ -8,7 +8,7 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1000):
     
     assert mode in ["MIN", "MAX"]
     assert epsilon >= 0
-    assert 0. <= q < 1., q
+    assert 0. <= q <= 1., q
 
     if(mode == "MAX"):
         p_max, p_min = 1., q
@@ -17,7 +17,7 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1000):
 
     for _ in range(nb_iter_max):
 
-        p = (p_min+p_max)/2.
+        p = (p_min+p_max)/2
         p_kl = kl(q, p)
 
         if torch.isclose(p_kl, epsilon) or (p_max-p_min)/2. < 1e-9:
@@ -47,7 +47,6 @@ class klInvFunction(torch.autograd.Function):
 
         ctx.save_for_backward(q, epsilon)
         out = kl_inv(q, epsilon, mode)
-        out = torch.clamp(out, 1e-9, 1-1e-4)
 
         ctx.out = out
         ctx.mode = mode
@@ -57,6 +56,9 @@ class klInvFunction(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad_output):
         q, epsilon = ctx.saved_tensors
+
+        if q == 1. or ctx.out == 0. or ctx.out == 1.:
+            return grad_output * 0., grad_output * 0., None
 
         term_1 = (1. - q)/(1. - ctx.out)
         term_2 = q / ctx.out
