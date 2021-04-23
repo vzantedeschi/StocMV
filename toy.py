@@ -8,7 +8,7 @@ import torch
 from torch.optim import Adam
 
 from core.bounds import BOUNDS
-from core.losses import sigmoid_loss
+from core.losses import sigmoid_loss, moment_loss, exp_loss
 from core.monitors import MonitorMV
 from core.optimization import train_batch
 from core.utils import deterministic
@@ -33,7 +33,16 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
     
-    train_errors, test_errors, bounds, times = [], [], [], []
+    # define params for each method
+    risks = { # type: (loss, bound-coeff, distribution-type)
+        "exact": (None, 1., "dirichlet"),
+        "MC": (sigmoid_loss, 1., "dirichlet"),
+        "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical"),
+        "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical"),
+        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.risk_c), np.exp(cfg.training.risk_c / 2) - 1, "categorical")
+    }
+
+    train_errors, test_errors, train_losses, bounds, times = [], [], [], [], []
     for i in range(cfg.num_trials):
         
         deterministic(int(cfg.training.seed)+i)
@@ -62,25 +71,24 @@ def main(cfg):
 
         monitor = MonitorMV(SAVE_DIR)
 
-        betas = [torch.ones(M) * cfg.model.prior for p in predictors] # prior
+        loss, coeff, distr = risks[cfg.training.risk]
 
-        if len(predictors) == 2:
-            model = MultipleMajorityVote(predictors, betas, (cfg.model.m, 1-cfg.model.m), mc_draws=cfg.training.MC_draws)
+        if cfg.model.pred == "rf":
+            betas = [torch.ones(M) * cfg.model.prior for p in predictors] # prior
+
+            # weights proportional to data sizes
+            model = MultipleMajorityVote(predictors, betas, weights=(cfg.model.m, 1-cfg.model.m), mc_draws=cfg.training.MC_draws, distr=distr)
         
         else:
-            model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws)
+            betas = torch.ones(M) * cfg.model.prior # prior
+
+            model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr)
 
         bound = None
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, monitor=monitor)
-
-        loss = None
-        if cfg.training.risk == "MC":
-
-            print("with approximated risk, using sigmoid loss")
-            loss = sigmoid_loss
+            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=coeff, monitor=monitor)
 
         # get voter predictions
         if m: 
@@ -102,10 +110,17 @@ def main(cfg):
 
         test_error = model.risk(test_data)
         train_error = model.risk(train_data)
-
         print(f"Test error: {test_error.item()}")
 
-        b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_error, cfg.bound.delta, m=m, verbose=True))
+        if cfg.training.risk in ["exact", "MC"]:
+            # evaluate bound with error
+            b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_error, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
+
+        else:
+            # evaluate bound with loss
+            train_loss = model.risk(train_data, loss)
+            b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_loss, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
+            train_losses.append(train_loss.item())
         
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
@@ -120,8 +135,14 @@ def main(cfg):
 
         plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
         plt.clf()
-        
-    np.save(SAVE_DIR / "err-b.npy", {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))})
+    
+    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))}
+
+    if cfg.training.risk not in ["exact", "MC"]:
+        results.update({"train-loss": (np.mean(train_losses), np.std(train_losses))})
+
+
+    np.save(SAVE_DIR / "err-b.npy", results)
 
 if __name__ == "__main__":
     main()

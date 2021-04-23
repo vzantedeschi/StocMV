@@ -14,6 +14,7 @@ training:
   risk: "exact" # or MC
   opt_bound: True
   sigmoid_c: 100
+  risk_c: 3
   MC_draws: 10
   lr: 0.1
 
