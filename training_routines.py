@@ -4,7 +4,7 @@ from copy import deepcopy
 from models.majority_vote import MultipleMajorityVote
 from core.optimization import train_stochastic, train_stochastic_multiset, evaluate, evaluate_multiset
 
-def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, lr_scheduler, bound, bound_type, loss=None, loss_eval=None, monitor=None, num_epochs=100):
+def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, bound, bound_type, loss=None, loss_eval=None, monitor=None, num_epochs=100, lr_scheduler=None):
 
     best_val_bound = float("inf")
     best_e = -1
@@ -35,7 +35,8 @@ def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model
             no_improv = 0
 
         # reduce learning rate if needed
-        lr_scheduler.step(val_stats[bound_type])
+        if lr_scheduler:
+            lr_scheduler.step(val_stats[bound_type])
 
         if no_improv == num_epochs // 4:
             break
