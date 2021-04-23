@@ -21,7 +21,7 @@ MC_DATASETS = {
     'SENSORLESS': fetch_SENSORLESS,
     'SHUTTLE': fetch_SHUTTLE,
     'FASHION': fetch_FASHION_MNIST,
-    'USPS': fetch_USPS,
+    # 'USPS': fetch_USPS,
 }
 
 TOY_DATASETS = [

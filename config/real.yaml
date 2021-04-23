@@ -2,16 +2,16 @@ num_trials: 10
 num_workers: 4
 
 model:
-  M: 4 # number of predictors, if stumps: 2*M per dimension
-  prior: 0.1 # param of the Dirichlet prior
-  pred: "stumps-uniform" # or "rf"
+  M: 100 # number of predictors, if stumps: 2*M per dimension
+  prior: 1 # param of the Dirichlet prior
+  pred: "rf" # or "rf"
   bootstrap: 0.5
   tree_depth: None
   m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
 
 training:
-  seed: 06042021
-  alpha: 1e4
+  seed: 23042021
+  lr: 0.1
   batch_size: 1024
   num_epochs: 100
   risk: "exact" # or MC

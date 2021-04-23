@@ -4,10 +4,11 @@ from pathlib import Path
 import numpy as np
 import torch
 
+from torch.optim import Adam
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
 
 from core.bounds import BOUNDS
-from core.cocob_optim import COCOB
 from core.losses import sigmoid_loss, moment_loss, exp_loss
 from core.monitors import MonitorMV
 from core.utils import deterministic
@@ -126,16 +127,18 @@ def main(cfg):
             model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr)
 
         monitor = MonitorMV(SAVE_DIR)
-        optimizer = COCOB(model.parameters(), alpha=cfg.training.alpha)
+        optimizer = Adam(model.parameters(), lr=cfg.training.lr)
+        # init learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
 
         if cfg.training.risk in ["exact", "MC"]:
             
-            *_, best_train_stats, test_error, time = stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, lr_scheduler, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs)
+            *_, best_train_stats, test_error, time = stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
             
             train_errors.append(best_train_stats['error'])
 
         else:
-            *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs)
+            *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
         
             train_errors.append(train_error['error'])
             train_losses.append(best_train_stats['error'])
