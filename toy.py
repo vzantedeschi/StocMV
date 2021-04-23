@@ -140,8 +140,7 @@ def main(cfg):
     results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))}
 
     if cfg.training.risk not in ["exact", "MC"]:
-        results.update({"train-loss": (np.mean(train_losses), np.std(train_losses))})
-
+        results.update({"train-risk": (np.mean(train_losses), np.std(train_losses))})
 
     np.save(SAVE_DIR / "err-b.npy", results)
 
