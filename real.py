@@ -62,11 +62,12 @@ def main(cfg):
 
         if cfg.bound.stochastic:
             print("Evaluate bound regularizations over mini-batch")
-            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=m, coeff=coeff)
+            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
 
         else:
             print("Evaluate bound regularizations over whole train+val set")
-            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](len(data.X_train) + len(data.X_valid), model, risk, delta=cfg.bound.delta, m=m, coeff=coeff)
+            n = len(data.X_train) + len(data.X_valid)
+            bound = lambda _, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
 
     if cfg.model.pred == "rf": # a loader per posterior
 

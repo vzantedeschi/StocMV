@@ -82,25 +82,25 @@ def main(cfg):
 
             model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr)
 
-        bound = None
-        if cfg.training.opt_bound:
-
-            print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=coeff, monitor=monitor)
-
         # get voter predictions
         if cfg.model.pred == "rf":
 
             m = int(cfg.dataset.N_train*cfg.model.m) # number of points for learning first prior
             # use first m data for learning the second posterior, and the remainder for the first one
-            train_data = [(train_y[m:], p(train_x[m:])), (train_y[:m], p(train_x[:m]))]
-            # test both posterior on entire test set
+            train_data = [(train_y[m:], predictors[0](train_x[m:])), (train_y[:m], predictors[1](train_x[:m]))]
+            # test both posteriors on entire test set
             test_data = [(test_y, p(test_x)) for p in predictors]
 
         else:
             m = None
             train_data = train_y, predictors(train_x)
             test_data = test_y, predictors(test_x)
+
+        bound = None
+        if cfg.training.opt_bound:
+
+            print(f"Optimize {cfg.bound.type} bound")
+            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=coeff, monitor=monitor)
 
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
 

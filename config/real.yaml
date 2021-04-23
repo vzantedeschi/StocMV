@@ -24,4 +24,4 @@ dataset: 'SVMGUIDE'
 bound:
   delta: 0.05
   type: "seeger"
-  stochastic: True
+  stochastic: False
