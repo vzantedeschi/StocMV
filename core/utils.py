@@ -1,3 +1,4 @@
+import bz2
 import torch
 import numpy as np
 import random
@@ -44,24 +45,31 @@ def download(url, filename, delete_if_interrupted=True, chunk_size=4096):
     return filename
 
 """
-Code taken from https://github.com/StephanLorenzen/MajorityVoteBounds/blob/278a2811774e48093a7593e068e5958832cfa686/mvb/data.py#L20
+Code adapted from https://github.com/StephanLorenzen/MajorityVoteBounds/blob/278a2811774e48093a7593e068e5958832cfa686/mvb/data.py#L20
 """
 
-def read_idx_file(path, d, sep=None):
+def read_idx_file(path, d, sep=None, bz2_compressed=False):
     X = []
     Y = []
-    with open(path) as f:
-        for l in f:
-            x = np.zeros(d)
-            l = l.strip().split() if sep is None else l.strip().split(sep)
-            Y.append(int(l[0]))
-            for pair in l[1:]:
-                pair = pair.strip()
-                if pair=='':
-                    continue
-                (i,v) = pair.split(":")
-                if v=='':
-                    import pdb; pdb.set_trace()
-                x[int(i)-1] = float(v)
-            X.append(x)
+
+    if bz2_compressed:
+        f = bz2.open(path, mode='rt')
+    else:
+        f = open(path)
+
+    for l in f:
+        x = np.zeros(d)
+        l = l.strip().split() if sep is None else l.strip().split(sep)
+        Y.append(int(l[0]))
+        for pair in l[1:]:
+            pair = pair.strip()
+            if pair=='':
+                continue
+            (i,v) = pair.split(":")
+            if v=='':
+                import pdb; pdb.set_trace()
+            x[int(i)-1] = float(v)
+        X.append(x)
+
+    f.close()
     return np.array(X),np.array(Y)

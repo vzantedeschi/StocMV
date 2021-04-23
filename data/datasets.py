@@ -4,12 +4,7 @@ from pathlib import Path
 from data.real_datasets import *
 from data.toy_datasets import *
 
-REAL_DATASETS = {
-    'HIGGS': fetch_HIGGS,
-    'CLICK': fetch_CLICK,
-    'GLASS': fetch_GLASS,
-    'COVTYPE': fetch_COVTYPE,
-    'DIGITS': fetch_DIGITS,
+BINARY_DATASETS = {
     'MUSH': fetch_MUSHROOMS,
     'TTT': fetch_TICTACTOE,
     'HABER': fetch_HABERMAN,
@@ -17,6 +12,16 @@ REAL_DATASETS = {
     'ADULT': fetch_ADULT,
     'CODRNA': fetch_CODRNA,
     'SVMGUIDE': fetch_SVMGUIDE1
+}
+
+MC_DATASETS = {
+    'MNIST': fetch_MNIST,
+    'PENDIGITS': fetch_PENDIGITS,
+    'PROTEIN': fetch_PROTEIN,
+    'SENSORLESS': fetch_SENSORLESS,
+    'SHUTTLE': fetch_SHUTTLE,
+    'FASHION': fetch_FASHION_MNIST,
+    'USPS': fetch_USPS,
 }
 
 TOY_DATASETS = [
@@ -30,7 +35,7 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path='./data', normalize=False, flatten=False, binary=True, **kwargs):
+    def __init__(self, dataset, data_path='./data', normalize=False, flatten=False, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATASETS) or a custom dataset
@@ -43,28 +48,38 @@ class Dataset:
         path = Path(data_path)
         path.mkdir(parents=True, exist_ok=True)
 
-        if dataset in REAL_DATASETS:
-            data_dict = REAL_DATASETS[dataset](path / dataset, **kwargs)
+        if dataset in BINARY_DATASETS:
+
+            self.binary = True
+            data_dict = BINARY_DATASETS[dataset](path / dataset, **kwargs)
 
             self.X_valid = data_dict['X_valid']
             self.y_valid = data_dict['y_valid'][..., None]
+            self.y_valid[self.y_valid == 0] = -1
 
-            if binary:
-                self.y_valid[self.y_valid == 0] = -1
+        elif dataset in MC_DATASETS:
+
+            self.binary = False
+            data_dict = MC_DATASETS[dataset](path / dataset, **kwargs)
+
+            self.X_valid = data_dict['X_valid']
+            self.y_valid = data_dict['y_valid'][..., None]
             
         elif dataset in TOY_DATASETS:
+
+            self.binary = True
             data_dict = toy_dataset(name=dataset, **kwargs)
             normalize = False
 
         else:
-            raise NotImplementedError("Dataset not supported atm")
+            raise NotImplementedError("Dataset not supported")
 
         self.X_train = data_dict['X_train']
         self.y_train = data_dict['y_train'][..., None]
         self.X_test = data_dict['X_test']
         self.y_test = data_dict['y_test'][..., None]
         
-        if binary:
+        if self.binary:
             self.y_train[self.y_train == 0] = -1
             self.y_test[self.y_test == 0] = -1
 
