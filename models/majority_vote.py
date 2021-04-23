@@ -53,6 +53,7 @@ class MajorityVote(torch.nn.Module):
 
         labels = thetas @ y_pred
 
+        # TODO: prediction for multiclass but not one-hot encoded
         if y_pred.dim() == 3:
             num_classes = labels.shape[2]
             c_min, c_max = 0, num_classes - 1

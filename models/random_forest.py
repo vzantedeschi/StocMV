@@ -18,7 +18,7 @@ def decision_trees(M, data, max_samples=1., max_features="sqrt", max_depth=None)
         bootstrap = False
         max_samples = None
 
-    forest = RandomForestClassifier(n_estimators=M, criterion="gini", max_depth=max_depth, max_features=max_features, bootstrap=bootstrap, max_samples=max_samples, n_jobs=-1)
+    forest = RandomForestClassifier(n_estimators=M, criterion="gini", max_depth=max_depth, max_features=max_features, bootstrap=bootstrap, max_samples=max_samples, n_jobs=-1, class_weight='balanced_subsample')
     forest.fit(*data)
 
     return forest.estimators_, M
