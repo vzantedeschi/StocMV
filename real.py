@@ -41,7 +41,7 @@ def main(cfg):
     }
 
     data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")     
-    
+
     m = 0
     if cfg.model.pred == "stumps-uniform":
         predictors, M = uniform_decision_stumps(cfg.model.M, data.X_train.shape[1], data.X_train.min(0), data.X_train.max(0))

@@ -252,7 +252,7 @@ def fetch_SENSORLESS(path, valid_size=0.2, test_size=0.2, seed=None):
         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass/Sensorless', data_path)
 
     X, Y = read_idx_file(data_path, 48)
-    
+    Y -= 1
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
