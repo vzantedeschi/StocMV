@@ -23,7 +23,11 @@ def decision_trees(M, data, max_samples=1., max_features="sqrt", max_depth=None)
 
     return forest.estimators_, M
 
-def two_forests(M, m, X, y, max_samples, max_depth, binary):
+def two_forests(M, r, X, y, max_samples, max_depth, binary):
+
+    assert 0 <= r <= 1, r
+    
+    m = int(len(X) * r)
 
     # learn one prior
     trees1, _ = decision_trees(M, (X[:m], y[:m]), max_samples=max_samples, max_depth=max_depth)

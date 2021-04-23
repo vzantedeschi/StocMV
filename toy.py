@@ -49,7 +49,6 @@ def main(cfg):
 
         data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test) 
 
-        m = None
         if cfg.model.pred == "stumps-uniform":
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
 
@@ -61,8 +60,7 @@ def main(cfg):
             if cfg.model.tree_depth == "None":
                 cfg.model.tree_depth = None
 
-            m = int(cfg.dataset.N_train*cfg.model.m) # number of points for learning first prior
-            predictors, M = two_forests(cfg.model.M, m, data.X_train, data.y_train[:, 0], max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=True)
+            predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train[:, 0], max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=True)
 
         else:
             raise NotImplementedError("model.pred should be one the following: [stumps-uniform, stumps-custom, rf]")
@@ -91,13 +89,16 @@ def main(cfg):
             bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=coeff, monitor=monitor)
 
         # get voter predictions
-        if m: 
+        if cfg.model.pred == "rf":
+
+            m = int(cfg.dataset.N_train*cfg.model.m) # number of points for learning first prior
             # use first m data for learning the second posterior, and the remainder for the first one
-            train_data = [(train_y[m:], p(train_x[m:])) for p in predictors]
+            train_data = [(train_y[m:], p(train_x[m:])), (train_y[:m], p(train_x[:m]))]
             # test both posterior on entire test set
             test_data = [(test_y, p(test_x)) for p in predictors]
 
         else:
+            m = None
             train_data = train_y, predictors(train_x)
             test_data = test_y, predictors(test_x)
 

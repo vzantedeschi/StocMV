@@ -2,9 +2,12 @@ num_trials: 10
 num_workers: 4
 
 model:
-  M: 1 # number of predictors, if stumps: 2*M per dimension
+  M: 4 # number of predictors, if stumps: 2*M per dimension
   prior: 0.1 # param of the Dirichlet prior
-  pred: "stumps-uniform"
+  pred: "stumps-uniform" # or "rf"
+  bootstrap: 0.5
+  tree_depth: None
+  m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
 
 training:
   seed: 06042021
@@ -20,5 +23,5 @@ dataset: 'SVMGUIDE'
 
 bound:
   delta: 0.05
-  type: "mcallester"
+  type: "seeger"
   stochastic: True

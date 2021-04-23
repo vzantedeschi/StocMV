@@ -1,7 +1,8 @@
 from time import time
 from copy import deepcopy
 
-from core.optimization import train_stochastic, evaluate
+from models.majority_vote import MultipleMajorityVote
+from core.optimization import train_stochastic, train_stochastic_multiset, evaluate, evaluate_multiset
 
 def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, lr_scheduler, bound, bound_type, loss=None, loss_eval=None, monitor=None, num_epochs=100):
 
@@ -9,12 +10,20 @@ def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model
     best_e = -1
     no_improv = 0
 
+    if isinstance(model, MultipleMajorityVote): # then expect multiple dataloaders
+        train_routine = train_stochastic_multiset
+        val_routine = evaluate_multiset
+        test_routine = lambda d, *args, **kwargs: evaluate_multiset((d, d), *args, **kwargs)
+    else:
+        train_routine, val_routine, test_routine = train_stochastic, evaluate, evaluate
+
+    
     t1 = time()
     for e in range(num_epochs):
-        train_stochastic(trainloader, model, optimizer, epoch=e, bound=bound, loss=loss, monitor=monitor)
+        train_routine(trainloader, model, optimizer, epoch=e, bound=bound, loss=loss, monitor=monitor)
 
-        val_stats = evaluate(valloader, model, epoch=e, bounds={bound_type: bound}, loss=loss_eval, monitor=monitor)
-        train_stats = evaluate(trainvalloader, model, epoch=e, bounds={bound_type: bound}, loss=loss_eval, monitor=monitor, tag="train-val") # just for monitoring purposes
+        val_stats = val_routine(valloader, model, epoch=e, bounds={bound_type: bound}, loss=loss_eval, monitor=monitor)
+        train_stats = val_routine(trainvalloader, model, epoch=e, bounds={bound_type: bound}, loss=loss_eval, monitor=monitor, tag="train-val") # just for monitoring purposes
         print(f"Epoch {e}: {val_stats[bound_type]}\n")
         
         no_improv += 1
@@ -36,14 +45,14 @@ def stochastic_routine(trainloader, valloader, trainvalloader, testloader, model
     res = best_model, best_val_bound, best_train_stats
 
     if testloader is not None:
-        test_error = evaluate(testloader, best_model, epoch=e, tag="test")
+        test_error = test_routine(testloader, best_model, epoch=e, tag="test")
 
         print(f"Test error: {test_error['error']}; {bound_type} bound: {best_train_stats[bound_type]}\n")
 
         res = (*res, test_error)
 
     if loss_eval is not None:
-        train_error = evaluate(trainvalloader, best_model, epoch=e, tag="train-val")
+        train_error = val_routine(trainvalloader, best_model, epoch=e, tag="train-val")
 
         res = (*res, train_error)
 
