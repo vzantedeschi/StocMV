@@ -52,7 +52,7 @@ def main(cfg):
             cfg.model.tree_depth = None
 
         m = cfg.model.m # number of points for learning first prior
-        predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train[:, 0], max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=True)
+        predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train[:, 0], max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
 
     else:
         raise NotImplementedError("model.pred should be one the following: [stumps-uniform, rf]")
