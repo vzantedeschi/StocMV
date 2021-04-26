@@ -7,6 +7,7 @@ import torch
 
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import AdaBoostClassifier
+from sklearn.tree import DecisionTreeClassifier
 
 from graphics.plot_predictions import plot_2D
 import matplotlib.pyplot as plt
@@ -25,9 +26,13 @@ def main(cfg):
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
     
+    if cfg.model.tree_depth == "None":
+        cfg.model.tree_depth = None 
+
+    print(cfg.model.tree_depth)
     models = {
         "GaussianNB": (GaussianNB, {}),
-        "Adaboost": (AdaBoostClassifier, {"n_estimators": cfg.model.M}),
+        "Adaboost": (AdaBoostClassifier, {"base_estimator": DecisionTreeClassifier(max_depth=cfg.model.tree_depth), "n_estimators": cfg.model.M}),
         "FrequentistNB": (NaiveBayes, {"frequentist": True}),
         "BayesianNB": (NaiveBayes, {"frequentist": False}),
     }

@@ -3,6 +3,7 @@ num_trials: 10
 model: 
   type: GaussianNB
   M: 16
+  tree_depth: 1 # stumps of 1
   
 training:
   seed: 23032021
