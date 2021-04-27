@@ -43,6 +43,7 @@ def main(cfg):
     train_errors, test_errors, train_losses, bounds, times = [], [], [], [], []
     for i in range(cfg.num_trials):
         
+        print("seed", cfg.training.seed+i)
         deterministic(cfg.training.seed+i)
 
         SAVE_DIR = ROOT_DIR / f"seed={cfg.training.seed+i}"
@@ -60,7 +61,9 @@ def main(cfg):
 
             continue
 
-        data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")     
+        data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data")
+        data.X_train = np.vstack((data.X_train, data.X_valid))
+        data.y_train = np.vstack((data.y_train, data.y_valid))
 
         m = 0
         if cfg.model.pred == "stumps-uniform":
@@ -89,8 +92,8 @@ def main(cfg):
                 bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
 
             else:
-                print("Evaluate bound regularizations over whole train+val set")
-                n = len(data.X_train) + len(data.X_valid)
+                print("Evaluate bound regularizations over whole training set")
+                n = len(data.X_train)
                 bound = lambda _, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
 
         if cfg.model.pred == "rf": # a loader per posterior
@@ -103,27 +106,9 @@ def main(cfg):
                 DataLoader(train2, batch_size=cfg.training.batch_size // 2, num_workers=cfg.num_workers, shuffle=True)
             ] 
 
-            m_val = int(len(data.X_valid) * cfg.model.m)
-            val1 = TorchDataset(data.X_valid[m_val:], data.y_valid[m_val:])
-            val2 = TorchDataset(data.X_valid[:m_val], data.y_valid[:m_val])
-            valloader = [
-                DataLoader(val1, batch_size=4096, num_workers=cfg.num_workers, shuffle=False),
-                DataLoader(val2, batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
-            ]
-
-            trainvalloader = [
-                DataLoader(ConcatDataset([train1, val1]), batch_size=4096, num_workers=cfg.num_workers),
-                DataLoader(ConcatDataset([train2, val2]), batch_size=4096, num_workers=cfg.num_workers)
-            ]
-
         else:
             train = TorchDataset(data.X_train, data.y_train)
             trainloader = DataLoader(train, batch_size=cfg.training.batch_size, num_workers=cfg.num_workers, shuffle=True)
-
-            val = TorchDataset(data.X_valid, data.y_valid)
-            valloader = DataLoader(val, batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
-
-            trainvalloader = DataLoader(ConcatDataset([train, val]), batch_size=4096, num_workers=cfg.num_workers)
 
         testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
 
@@ -146,13 +131,13 @@ def main(cfg):
         seed_results = {}
         if cfg.training.risk in ["exact", "MC"]:
             
-            *_, best_train_stats, test_error, time = stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
+            *_, best_train_stats, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
             
             train_errors.append(best_train_stats['error'])
             seed_results["train-error"] = best_train_stats['error']
 
         else:
-            *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, valloader, trainvalloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
+            *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
         
             train_errors.append(train_error['error'])
             train_losses.append(best_train_stats['error'])
@@ -164,15 +149,17 @@ def main(cfg):
         bounds.append(best_train_stats[cfg.bound.type])
         times.append(time)
 
-        seed_results["test_error"] = test_error['error']
+        seed_results["test-error"] = test_error['error']
         seed_results[cfg.bound.type] = best_train_stats[cfg.bound.type]
         seed_results["time"] = time
+        seed_results["posterior"] = torch.exp(model.get_post()).detach().numpy()
 
         # save seed results
         np.save(SAVE_DIR / "err-b.npy", seed_results)
 
         monitor.close()
-
+    
+    assert len(train_errors) == cfg.num_trials, "Wrong number of seed results"
     results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))}
 
     if cfg.training.risk not in ["exact", "MC"]:
