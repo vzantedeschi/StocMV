@@ -13,7 +13,7 @@ def deterministic(random_state):
     random.seed(random_state)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
-
+    
 """
 Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 

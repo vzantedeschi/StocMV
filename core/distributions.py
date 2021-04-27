@@ -77,7 +77,7 @@ class DirichletCustom():
         if mean:
             return r.mean()
 
-        return r.sum()
+        return r.sum(0)
 
     def rsample(self):
 

@@ -1,8 +1,8 @@
 from time import time
 from copy import deepcopy
 
-from models.majority_vote import MultipleMajorityVote
 from core.optimization import train_stochastic, train_stochastic_multiset, evaluate, evaluate_multiset
+from models.majority_vote import MultipleMajorityVote
 
 def stochastic_routine(trainloader, testloader, model, optimizer, bound, bound_type, loss=None, loss_eval=None, monitor=None, num_epochs=100, lr_scheduler=None):
 
@@ -53,7 +53,7 @@ def stochastic_routine(trainloader, testloader, model, optimizer, bound, bound_t
         res = (*res, test_error)
 
     if loss_eval is not None:
-        train_error = val_routine(trainloader, best_model, epoch=e, tag="train")
+        train_error = val_routine(trainloader, best_model, loss=loss_eval)
 
         res = (*res, train_error)
 

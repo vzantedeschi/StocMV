@@ -22,7 +22,7 @@ from training_routines import stochastic_routine
 @hydra.main(config_path='config/real.yaml')
 def main(cfg):
 
-    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/"
+    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/max-depth={cfg.model.tree_depth}/prior={cfg.model.prior}/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/"
 
     ROOT_DIR = Path(ROOT_DIR)
 
@@ -40,7 +40,7 @@ def main(cfg):
         "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.risk_c), np.exp(cfg.training.risk_c / 2) - 1, "categorical")
     }
 
-    train_errors, test_errors, train_losses, bounds, times = [], [], [], [], []
+    train_errors, test_errors, train_losses, bounds, strengths, times = [], [], [], [], [], []
     for i in range(cfg.num_trials):
         
         print("seed", cfg.training.seed+i)
@@ -50,11 +50,12 @@ def main(cfg):
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
         if (SAVE_DIR / "err-b.npy").is_file():
-            # load save stats
+            # load saved stats
             seed_results = np.load(SAVE_DIR / "err-b.npy", allow_pickle=True).item()
 
             train_errors.append(seed_results["train-error"])
             test_errors.append(seed_results["test-error"])
+            strengths.append(seed_results["strength"])
             bounds.append(seed_results[cfg.bound.type])
             times.append(seed_results["time"])
             train_losses.append(seed_results.pop("train-risk", None)) # available only for non-exact methods
@@ -145,6 +146,7 @@ def main(cfg):
             seed_results["train-error"] = train_error['error']
             seed_results["train-risk"] = best_train_stats['error']
 
+        strengths.append(best_train_stats['strength'])
         test_errors.append(test_error['error'])
         bounds.append(best_train_stats[cfg.bound.type])
         times.append(time)
@@ -153,6 +155,7 @@ def main(cfg):
         seed_results[cfg.bound.type] = best_train_stats[cfg.bound.type]
         seed_results["time"] = time
         seed_results["posterior"] = torch.exp(model.get_post()).detach().numpy()
+        seed_results["strength"] = best_train_stats["strength"]
 
         # save seed results
         np.save(SAVE_DIR / "err-b.npy", seed_results)
@@ -160,7 +163,7 @@ def main(cfg):
         monitor.close()
     
     assert len(train_errors) == cfg.num_trials, "Wrong number of seed results"
-    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))}
+    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths))}
 
     if cfg.training.risk not in ["exact", "MC"]:
         results.update({"train-risk": (np.mean(train_losses), np.std(train_losses))})

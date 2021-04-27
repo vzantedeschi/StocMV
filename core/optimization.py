@@ -109,16 +109,19 @@ def evaluate(dataloader, model, epoch=-1, bounds=None, loss=None, monitor=None, 
     model.eval()
 
     risk = 0.
+    strength = 0.
     n = 0
 
     for batch in dataloader:
 
         data = batch[1], model(batch[0])
         risk += model.risk(data, loss=loss, mean=False)
+        strength += sum(model.voter_strength(data))
         n += len(data[0])
 
     risk /= n
-    total_metrics = {"error": risk.item()}
+    strength /= n
+    total_metrics = {"error": risk.item(), "strength": strength.item()}
 
     if bounds is not None:
 
@@ -136,6 +139,7 @@ def evaluate_multiset(dataloaders, model, epoch=-1, bounds=None, loss=None, moni
 
     risk = 0.
     n = 0
+    strength = 0.
 
     for batches in zip(*dataloaders):
 
@@ -144,10 +148,13 @@ def evaluate_multiset(dataloaders, model, epoch=-1, bounds=None, loss=None, moni
         data = [(batches[i][1], pred[i]) for i in range(len(batches))]
 
         risk += model.risk(data, loss=loss, mean=False)
-        n += sum(map(len, X))
+        strength += sum(model.voter_strength(data))
+
+        n += len(X[0])
 
     risk /= n
-    total_metrics = {"error": risk.item()}
+    strength /= n
+    total_metrics = {"error": risk.item(), "strength": strength.item()}
 
     if bounds is not None:
 

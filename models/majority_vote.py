@@ -46,6 +46,16 @@ class MajorityVote(torch.nn.Module):
 
         return self.distribution.risk(batch, mean)
 
+    def voter_strength(self, data):
+        """ expected accuracy of a voter of the ensemble"""
+        # import pdb; pdb.set_trace()
+        
+        y_target, y_pred = data
+
+        l = torch.where(y_target == y_pred, torch.tensor(1.), torch.tensor(0.))
+
+        return l.mean(1)
+
     def predict(self, X):
         
         thetas = self.distribution.rsample()
@@ -105,6 +115,13 @@ class MultipleMajorityVote(torch.nn.Module):
         risk = sum([w * mv.risk(batch, loss, mean) for mv, w, batch in zip(self.mvs, self.weights, batchs)])
 
         return risk
+
+    def voter_strength(self, batchs):
+        """ expected accuracy of a voter of the ensemble"""
+        # import pdb; pdb.set_trace()
+        l = torch.stack([w * mv.voter_strength(batch) for mv, w, batch in zip(self.mvs, self.weights, batchs)])
+
+        return l.sum(0)
 
     def predict(self, X):
         
