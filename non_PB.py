@@ -72,15 +72,15 @@ def main(cfg):
             model = models[cfg.model.type][0](**models[cfg.model.type][1])
             M = cfg.model.M
 
-            train_x, train_y = data.X_train, data.y_train
+            train_x, train_y, test_x, test_y = data.X_train, data.y_train, data.X_test, data.y_test
 
         model.fit(train_x, train_y)
 
         train_pred = model.predict(train_x)
         test_pred = model.predict(test_x)
 
-        test_error = (test_y[:, 0] != test_pred).sum() / len(test_x)
-        train_error = (train_y[:, 0] != train_pred).sum() / len(train_x)
+        test_error = (test_y != test_pred).sum() / len(test_x)
+        train_error = (train_y != train_pred).sum() / len(train_x)
 
         test_errors.append(test_error)
         train_errors.append(train_error)
