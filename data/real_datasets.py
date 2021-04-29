@@ -15,8 +15,7 @@ from sklearn.model_selection import train_test_split
 from category_encoders import LeaveOneOutEncoder
 from category_encoders.ordinal import OrdinalEncoder
 
-from core.utils import download, read_idx_file
-
+from data.utils import get_validation_set, download, read_idx_file
 # BINARY CLASSIFICATION
 
 def fetch_SVMGUIDE1(path, valid_size=0.2, seed=None):
@@ -34,7 +33,10 @@ def fetch_SVMGUIDE1(path, valid_size=0.2, seed=None):
     X_train, y_train = read_idx_file(train_path, 4, " ")
     X_test, y_test = read_idx_file(train_path, 4, " ")
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+    y_train[y_train == 0] = -1
+    y_test[y_test == 0] = -1
+
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -55,7 +57,7 @@ def fetch_CODRNA(path, valid_size=0.2, test_size=0.2, seed=None):
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size))
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -72,10 +74,11 @@ def fetch_PHISHING(path, valid_size=0.2, test_size=0.2, seed=None):
         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/phishing', data_path)
 
     X, Y = read_idx_file(data_path, 68, " ")
+    Y[Y == -1] = 0
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size))
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -94,14 +97,13 @@ def fetch_ADULT(path, valid_size=0.2, test_size=0.2, seed=None):
         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/a1a.t', test_path)
 
     X_train, y_train = read_idx_file(train_path, 123)
-    y_train[y_train == -1] = 0
     X_test, y_test = read_idx_file(test_path, 123)
-    y_test[y_test == -1] = 0
 
     X, Y = np.vstack([X_train, X_test]), np.hstack([y_train, y_test])
+    Y[Y == 0] = -1
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -120,10 +122,11 @@ def fetch_HABERMAN(path, valid_size=0.2, test_size=0.2, seed=None):
     data = np.genfromtxt(data_path, delimiter=',')
 
     X, Y = (data[:, 1:-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
+    Y[Y == 0] = -1
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -144,10 +147,11 @@ def fetch_MUSHROOMS(path, valid_size=0.2, test_size=0.2, seed=None):
     data = encoder.fit_transform(data)
     
     X, Y = (data[:, 1:]).astype(np.float32), (data[:, 0] - 1).astype(int)
+    Y[Y == 0] = -1
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -168,10 +172,11 @@ def fetch_TICTACTOE(path, valid_size=0.2, test_size=0.2, seed=None):
     data = encoder.fit_transform(data)
     
     X, Y = (data[:, :-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
-
+    Y[Y == 0] = -1
+    
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -192,8 +197,8 @@ def fetch_MNIST(path, valid_size=0.2, seed=None):
 
     X_train, y_train = read_idx_file(train_path, 784, " ", True)
     X_test, y_test = read_idx_file(test_path, 784, " ", True)
-
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+    
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -214,7 +219,7 @@ def fetch_PENDIGITS(path, valid_size=0.2, seed=None):
     X_train, y_train = read_idx_file(train_path, 16, " ")
     X_test, y_test = read_idx_file(test_path, 16, " ")
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -235,7 +240,7 @@ def fetch_PROTEIN(path, valid_size=0.2, seed=None):
     X_train, y_train = read_idx_file(train_path, 357, '  ', True)
     X_test, y_test = read_idx_file(test_path, 357, '  ', True)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -255,7 +260,7 @@ def fetch_SENSORLESS(path, valid_size=0.2, test_size=0.2, seed=None):
     Y -= 1
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size / (1 - test_size), random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -278,7 +283,7 @@ def fetch_SHUTTLE(path, valid_size=0.2, seed=None):
     X_test, y_test = read_idx_file(test_path, 9, " ")
     y_test -= 1
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -320,7 +325,7 @@ def fetch_FASHION_MNIST(path, valid_size=0.2, seed=None):
         buf = f.read(10000)
         y_test = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
 
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test

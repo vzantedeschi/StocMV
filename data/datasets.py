@@ -35,7 +35,7 @@ class Dataset:
     Code adapted from https://github.com/Qwicen/node/blob/master/lib/data.py .
 
     """
-    def __init__(self, dataset, data_path='./data', normalize=False, flatten=False, **kwargs):
+    def __init__(self, dataset, data_path='./data', normalize=False, **kwargs):
         """
         Dataset is a dataclass that contains all training and evaluation data required for an experiment
         :param dataset: a pre-defined dataset name (see DATASETS) or a custom dataset
@@ -48,43 +48,34 @@ class Dataset:
         path = Path(data_path)
         path.mkdir(parents=True, exist_ok=True)
 
+        valid_size = kwargs.pop("valid_size", 0.2)
         if dataset in BINARY_DATASETS:
 
             self.binary = True
-            data_dict = BINARY_DATASETS[dataset](path / dataset, **kwargs)
-
-            self.X_valid = data_dict['X_valid']
-            self.y_valid = data_dict['y_valid'][..., None]
-            self.y_valid[self.y_valid == 0] = -1
+            data_dict = BINARY_DATASETS[dataset](path / dataset, valid_size=valid_size, **kwargs)
 
         elif dataset in MC_DATASETS:
 
             self.binary = False
-            data_dict = MC_DATASETS[dataset](path / dataset, **kwargs)
-
-            self.X_valid = data_dict['X_valid']
-            self.y_valid = data_dict['y_valid'][..., None]
+            data_dict = MC_DATASETS[dataset](path / dataset, valid_size=valid_size, **kwargs)
             
         elif dataset in TOY_DATASETS:
 
             self.binary = True
-            data_dict = toy_dataset(name=dataset, **kwargs)
+            data_dict = toy_dataset(name=dataset, valid_size=valid_size, **kwargs)
             normalize = False
+            valid_size = 0
 
         else:
             raise NotImplementedError("Dataset not supported")
 
-        self.X_train = data_dict['X_train']
-        self.y_train = data_dict['y_train'][..., None]
-        self.X_test = data_dict['X_test']
-        self.y_test = data_dict['y_test'][..., None]
-        
-        if self.binary:
-            self.y_train[self.y_train == 0] = -1
-            self.y_test[self.y_test == 0] = -1
+        self.y_valid = data_dict.pop('y_valid', None)
+        self.X_valid = data_dict.pop('X_valid', None)
 
-        if flatten:
-            self.X_train, self.X_valid, self.X_test = self.X_train.reshape(len(self.X_train), -1), self.X_valid.reshape(len(self.X_valid), -1), self.X_test.reshape(len(self.X_test), -1)
+        self.X_train = data_dict['X_train']
+        self.y_train = data_dict['y_train']
+        self.X_test = data_dict['X_test']
+        self.y_test = data_dict['y_test']
 
         if normalize:
 
@@ -97,26 +88,27 @@ class Dataset:
             self.std[self.std == 0.] = 1.
 
             self.X_train = (self.X_train - self.mean) / self.std
-            self.X_valid = (self.X_valid - self.mean) / self.std
             self.X_test = (self.X_test - self.mean) / self.std
+
+            if valid_size > 0:
+                self.X_valid = (self.X_valid - self.mean) / self.std
 
         self.data_path = data_path
         self.dataset = dataset
 
 class TorchDataset(torch.utils.data.Dataset):
 
-    def __init__(self, *data):
+    def __init__(self, X, y):
         
-        n_data = len(data)
-        if n_data == 0:
-            raise ValueError("At least one set required as input")
+        self.num_data = len(X)
 
-        self.data = data
+        self.X = X
+        self.y = y[:, None]
 
     def __len__(self):
 
-        return len(self.data[0])
+        return self.num_data
 
     def __getitem__(self, idx):
         # import pdb; pdb.set_trace()
-        return [s[idx] for s in self.data]
+        return self.X[idx], self.y[idx]
