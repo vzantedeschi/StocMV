@@ -60,12 +60,12 @@ def main(cfg):
             if cfg.model.tree_depth == "None":
                 cfg.model.tree_depth = None
 
-            predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train[:, 0], max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
+            predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train, max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
 
         else:
             raise NotImplementedError("model.pred should be one the following: [stumps-uniform, stumps-custom, rf]")
 
-        train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float(), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).float()
+        train_x, train_y, test_x, test_y = torch.from_numpy(data.X_train).float(), torch.from_numpy(data.y_train).float().unsqueeze(1), torch.from_numpy(data.X_test).float(), torch.from_numpy(data.y_test).unsqueeze(1).float()
 
         monitor = MonitorMV(SAVE_DIR)
 
