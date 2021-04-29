@@ -38,7 +38,7 @@ def plot_2D(data, model, bound=None, res=0.02, margin=0.1, classes=[-1, 1]):
 
     for m, c in zip(markers, classes):
         # plot training points with true labels
-        plt.scatter(data.X_train[data.y_train[:, 0] == c][:,0], data.X_train[data.y_train[:, 0] == c][:,1], s=20, marker=m, c="w", edgecolors="k")
+        plt.scatter(data.X_train[data.y_train == c][:,0], data.X_train[data.y_train == c][:,1], s=20, marker=m, c="w", edgecolors="k")
 
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())

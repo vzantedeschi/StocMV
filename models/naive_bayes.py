@@ -15,7 +15,7 @@ class NaiveBayes():
         n = len(X)
         y_pred = self.voters(X)
 
-        num_corrects = torch.where(y[:, None] == y_pred, torch.ones(1), torch.zeros(1)).sum(0)
+        num_corrects = torch.where(y == y_pred, torch.tensor(1), torch.tensor(0)).sum(0)
 
         if self.frequentist:
             p = num_corrects / n
@@ -31,13 +31,11 @@ class NaiveBayes():
         labels = self.theta @ y_pred
 
         if y_pred.dim() == 3:
-            num_classes = labels.shape[2]
-            c_min, c_max = 0, num_classes - 1
+
             labels = torch.argmax(labels, 2) # if multiclass
 
         else:
-            num_classes = 1
-            c_min, c_max = -1, 1
+
             labels = torch.sign(labels) # if binary
 
         return labels        

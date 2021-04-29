@@ -4,7 +4,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 def trees_predict(x, trees, binary=True):
     
-    pred = torch.stack([torch.from_numpy(t.predict(x)) for t in trees], 1)
+    pred = torch.stack([torch.from_numpy(t.predict(x)).float() for t in trees], 1)
 
     if binary:
         pred[pred == 0] = -1

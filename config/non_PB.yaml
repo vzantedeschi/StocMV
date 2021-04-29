@@ -3,12 +3,12 @@ num_trials: 10
 model: 
   type: GaussianNB
   M: 16
-  tree_depth: 1 # stumps of 1
+  tree_depth: None # stumps if 1
   
 training:
   seed: 23032021
 
 dataset:
-  distr: normals # or moons
+  name: normals # or moons
   N_train: 100 # number of training points per class
   N_test: 1000 # number of test points per class
