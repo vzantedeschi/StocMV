@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
 
 from core.bounds import BOUNDS
-from core.losses import sigmoid_loss, moment_loss, exp_loss
+from core.losses import sigmoid_loss, moment_loss, exp_loss, rand_loss
 from core.monitors import MonitorMV
 from core.utils import deterministic
 from data.datasets import Dataset, TorchDataset
@@ -38,10 +38,11 @@ def main(cfg):
     risks = { # type: (loss, bound-coeff, distribution-type)
         "exact": (None, 1., "dirichlet"),
         "uniform": (None, 1., "dirichlet"),
-        "MC": (sigmoid_loss, 1., "dirichlet"),
+        "MC": (lambda x, y, z: sigmoid_loss(x, y, z, c=cfg.training.sigmoid_c), 1., "dirichlet"),
+        "rand": (lambda x, y, z: rand_loss(x, y, z, n=cfg.training.rand_n), 2., "categorical"),
         "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical"),
         "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical"),
-        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.risk_c), np.exp(cfg.training.risk_c / 2) - 1, "categorical")
+        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2) - 1, "categorical")
     }
 
     train_errors, test_errors, train_losses, bounds, strengths, times = [], [], [], [], [], []

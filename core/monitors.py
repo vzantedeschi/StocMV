@@ -4,28 +4,23 @@ from tensorboardX import SummaryWriter
 
 class MonitorMV():
 
-    def __init__(self, logdir, normalize=False):
+    def __init__(self, logdir):
 
         super(MonitorMV, self).__init__()
 
         self.logdir = logdir
         self.writer = SummaryWriter(logdir)
-        self.normalize = normalize
 
         self.it = 0
 
     def write_all(self, it, posterior, gradient, **metrics):
 
         self.it = it
-        if self.normalize:
-            p = posterior / posterior.sum()    
-        else:
-            p = posterior
 
         self.writer.add_scalars('variables/posterior', 
             { 
-             "l2": torch.norm(p, p=2),
-             "l1": torch.norm(p, p=1),
+             "l2": torch.norm(posterior, p=2),
+             "l1": torch.norm(posterior, p=1),
              }, it)
 
         self.writer.add_scalars('variables/post_grad', 

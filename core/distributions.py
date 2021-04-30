@@ -4,35 +4,7 @@ import numpy as np
 from torch.distributions.dirichlet import Dirichlet
 from torch import lgamma, digamma
 
-from betaincder import betainc, betaincderp, betaincderq
-
-class BetaInc(torch.autograd.Function):
-    """ regularized incomplete beta function and its forward and backward passes"""
-
-    @staticmethod
-    def forward(ctx, p, q, x):
-
-        ctx.save_for_backward(p, q, torch.tensor(x))
-        # deal with dirac distributions
-        if p == 0.:
-            return torch.ones(1) # for any x, cumulative = 1.
-
-        elif q == 0.:
-            return torch.zeros(1) # for any x > 0, cumulative = 0.
-    
-        return torch.tensor(betainc(x, p, q))
-
-    @staticmethod
-    def backward(ctx, grad):
-        p, q, x = ctx.saved_tensors
-
-        if p == 0. or q == 0.: # deal with dirac distributions
-            grad_p, grad_q = 0., 0.
-
-        else:
-            grad_p, grad_q = betaincderp(x, p, q), betaincderq(x, p, q)
-
-        return grad * grad_p, grad * grad_q, None
+from core.utils import BetaInc
 
 class DirichletCustom():
 
@@ -59,7 +31,7 @@ class DirichletCustom():
         correct = torch.where(y_target == y_pred, exp_alpha, torch.zeros(1)).sum(1)
         wrong = torch.where(y_target != y_pred, exp_alpha, torch.zeros(1)).sum(1)
         
-        s = [BetaInc.apply(c, w, 0.5) for c, w in zip(correct, wrong)]
+        s = [BetaInc.apply(c, w, torch.tensor(0.5)) for c, w in zip(correct, wrong)]
 
         if mean:
             return sum(s) / len(y_target)
@@ -91,8 +63,7 @@ class Categorical():
         
     def KL(self, beta):
 
-        exp_theta = torch.exp(self.theta)
-        t = exp_theta / exp_theta.sum()
+        t = self.get_theta()
 
         b = beta / beta.sum()
 
@@ -100,8 +71,7 @@ class Categorical():
 
     def approximated_risk(self, batch, loss, mean=True):
 
-        exp_theta = torch.exp(self.theta)
-        t = exp_theta / exp_theta.sum()
+        t = self.get_theta()
 
         y_target, y_pred = batch
 
@@ -114,8 +84,7 @@ class Categorical():
 
     def risk(self, batch, mean=True):
 
-        exp_theta = torch.exp(self.theta)
-        t = exp_theta / exp_theta.sum()
+        t = self.get_theta()
 
         y_target, y_pred = batch
 
@@ -130,10 +99,13 @@ class Categorical():
 
     def rsample(self):
 
-        exp_theta = torch.exp(self.theta)
-        t = exp_theta / exp_theta.sum()
+        t = self.get_theta()
 
         return t.unsqueeze(0)
+
+    def get_theta(self):
+        
+        return torch.nn.functional.softmax(self.theta, dim=0)
 
 distr_dict = {
     "dirichlet": DirichletCustom,

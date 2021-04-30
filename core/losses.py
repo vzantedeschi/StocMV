@@ -1,10 +1,18 @@
 import torch
 
+from core.utils import BetaInc
+
 def sigmoid_loss(y_target, y_pred, thetas, c=100):
 
     w_theta = torch.stack([torch.where(y_target != y_pred, t, torch.zeros(1)).sum(1) for t in thetas])
 
     return torch.sigmoid(c * (w_theta - 0.5))
+
+def rand_loss(y_target, y_pred, theta, n=100):
+
+    w_theta = torch.where(y_target != y_pred, theta, torch.zeros(1)).sum(1)
+
+    return torch.stack([BetaInc.apply(torch.tensor(n // 2 + 1), torch.tensor(n // 2), w) for w in w_theta])
 
 def moment_loss(y_target, y_pred, theta, order=1):
 
