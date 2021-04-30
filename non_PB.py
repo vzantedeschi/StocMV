@@ -76,11 +76,11 @@ def main(cfg):
 
         model.fit(train_x, train_y)
 
-        train_pred = model.predict(train_x)
-        test_pred = model.predict(test_x)
+        train_pred = model.predict(train_x).flatten()
+        test_pred = model.predict(test_x).flatten()
 
-        test_error = (test_y != test_pred).sum() / len(test_x)
-        train_error = (train_y != train_pred).sum() / len(train_x)
+        test_error = (test_y.flatten() != test_pred).sum() / len(test_x)
+        train_error = (train_y.flatten() != train_pred).sum() / len(train_x)
 
         test_errors.append(test_error)
         train_errors.append(train_error)
