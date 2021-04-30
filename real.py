@@ -17,23 +17,27 @@ from models.majority_vote import MultipleMajorityVote, MajorityVote
 from models.random_forest import two_forests
 from models.stumps import uniform_decision_stumps
 
-from training_routines import stochastic_routine
+from training_routines import stochastic_routine, notraining_routine
 
 @hydra.main(config_path='config/real.yaml')
 def main(cfg):
 
-    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/max-depth={cfg.model.tree_depth}/prior={cfg.model.prior}/lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/"
+    ROOT_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/stochastic-bound={cfg.bound.stochastic}/{cfg.model.pred}/M={cfg.model.M}/max-depth={cfg.model.tree_depth}/prior={cfg.model.prior}/"
 
     ROOT_DIR = Path(ROOT_DIR)
 
+    if cfg.training.risk != "uniform":
+        ROOT_DIR /= "lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/"
+
     if cfg.training.risk == "MC":
-        ROOT_DIR = ROOT_DIR / f"MC={cfg.training.MC_draws}"
+        ROOT_DIR /= f"MC={cfg.training.MC_draws}"
 
     print("results will be saved in:", ROOT_DIR.resolve()) 
 
     # define params for each method
     risks = { # type: (loss, bound-coeff, distribution-type)
         "exact": (None, 1., "dirichlet"),
+        "uniform": (None, 1., "dirichlet"),
         "MC": (sigmoid_loss, 1., "dirichlet"),
         "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical"),
         "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical"),
@@ -122,27 +126,40 @@ def main(cfg):
 
             model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr)
 
-        monitor = MonitorMV(SAVE_DIR)
-        optimizer = Adam(model.parameters(), lr=cfg.training.lr)
-        # init learning rate scheduler
-        lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
-
         seed_results = {}
-        if cfg.training.risk in ["exact", "MC"]:
-            
-            *_, best_train_stats, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
-            
+
+        if cfg.training.risk == "uniform":
+            model.set_post(torch.ones(M))
+
+            best_train_stats, test_error, time = notraining_routine(trainloader, testloader, model, bound, cfg.bound.type, loss=loss)
+
             train_errors.append(best_train_stats['error'])
             seed_results["train-error"] = best_train_stats['error']
 
         else:
-            *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
-        
-            train_errors.append(train_error['error'])
-            train_losses.append(best_train_stats['error'])
 
-            seed_results["train-error"] = train_error['error']
-            seed_results["train-risk"] = best_train_stats['error']
+            monitor = MonitorMV(SAVE_DIR)
+            optimizer = Adam(model.parameters(), lr=cfg.training.lr)
+            # init learning rate scheduler
+            lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
+
+            if cfg.training.risk in ["exact", "MC"]:
+                
+                *_, best_train_stats, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
+                
+                train_errors.append(best_train_stats['error'])
+                seed_results["train-error"] = best_train_stats['error']
+
+            else:
+                *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
+            
+                train_errors.append(train_error['error'])
+                train_losses.append(best_train_stats['error'])
+
+                seed_results["train-error"] = train_error['error']
+                seed_results["train-risk"] = best_train_stats['error']
+
+            monitor.close()
 
         strengths.append(best_train_stats['strength'])
         test_errors.append(test_error['error'])
@@ -152,19 +169,18 @@ def main(cfg):
         seed_results["test-error"] = test_error['error']
         seed_results[cfg.bound.type] = best_train_stats[cfg.bound.type]
         seed_results["time"] = time
-        seed_results["posterior"] = torch.exp(model.get_post()).detach().numpy()
+        seed_results["posterior"] = model.get_post().detach().numpy()
         seed_results["strength"] = best_train_stats["strength"]
 
         # save seed results
         np.save(SAVE_DIR / "err-b.npy", seed_results)
 
-        monitor.close()
         del trainloader, testloader
     
     assert len(train_errors) == cfg.num_trials, "Wrong number of seed results"
     results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths))}
 
-    if cfg.training.risk not in ["exact", "MC"]:
+    if cfg.training.risk in ["SO", "FO"]:
         results.update({"train-risk": (np.mean(train_losses), np.std(train_losses))})
 
     np.save(ROOT_DIR / "err-b.npy", results)

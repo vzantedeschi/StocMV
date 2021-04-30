@@ -58,3 +58,33 @@ def stochastic_routine(trainloader, testloader, model, optimizer, bound, bound_t
         res = (*res, train_error)
 
     return (*res, t2-t1)
+
+def notraining_routine(trainloader, testloader, model, bound, bound_type, loss=None, loss_eval=None):
+
+    if isinstance(model, MultipleMajorityVote): # then expect multiple dataloaders
+        val_routine = evaluate_multiset
+        test_routine = lambda d, *args, **kwargs: evaluate_multiset((d, d), *args, **kwargs)
+    else:
+        val_routine, test_routine = evaluate, evaluate
+    
+    t1 = time()
+
+    train_stats = val_routine(trainloader, model, bounds={bound_type: bound}, loss=loss_eval) # just for monitoring purposes
+
+    t2 = time()
+
+    res = (train_stats, )
+
+    if testloader is not None:
+        test_error = test_routine(testloader, model)
+
+        print(f"Test error: {test_error['error']}; {bound_type} bound: {train_stats[bound_type]}\n")
+
+        res = (*res, test_error)
+
+    if loss_eval is not None:
+        train_error = val_routine(trainloader, model, loss=loss_eval)
+
+        res = (*res, train_error)
+
+    return (*res, t2-t1)

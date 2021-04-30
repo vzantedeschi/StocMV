@@ -5,7 +5,7 @@ from core.distributions import distr_dict
 
 class MajorityVote(torch.nn.Module):
 
-    def __init__(self, voters, prior, mc_draws=10, posterior=None, distr="dirichlet"):
+    def __init__(self, voters, prior, mc_draws=10, distr="dirichlet"):
 
         super(MajorityVote, self).__init__()
         
@@ -18,23 +18,10 @@ class MajorityVote(torch.nn.Module):
         self.prior = prior
         self.voters = voters
         self.mc_draws = mc_draws
-
-        if posterior is not None:
-            assert all(posterior > 0), "all posterior parameters must be positive"
-            self.post = posterior
-
-        else:
-
-            self.post = torch.rand(self.num_voters) * 2 + 1e-9 # uniform draws in (0, 2]
-
-        if distr == "categorical": # make sure params sum to 1
-            self.post /= self.post.sum()
-
-        self.post = torch.nn.Parameter(torch.log(self.post), requires_grad=True) # use log (and apply exp(post) later so that posterior parameters are always positive)
-        
+        self.distr_type = distr
+        post = torch.rand(self.num_voters) * 2 + 1e-9 # uniform draws in (0, 2]
+        self.post = torch.nn.Parameter(torch.log(post), requires_grad=True)  # use log (and apply exp(post) later so that posterior parameters are always positive)
         self.distribution = distr_dict[distr](self.post, mc_draws)
-
-        self.fitted = True
 
     def forward(self, x):
         return self.voters(x)
@@ -83,10 +70,22 @@ class MajorityVote(torch.nn.Module):
         return self.distribution.KL(self.prior)
 
     def get_post(self):
-        return self.post
+        return torch.exp(self.post)
 
     def get_post_grad(self):
         return self.post.grad
+
+    def set_post(self, value):
+
+        assert all(value > 0), "all posterior parameters must be positive"
+        assert len(value) == self.num_voters
+         
+        if self.distr_type == "categorical": # make sure params sum to 1
+            value /= value.sum()
+
+        self.post = torch.nn.Parameter(torch.log(value), requires_grad=True) # use log (and apply exp(post) later so that posterior parameters are always positive)
+
+        self.distribution.alpha = self.post
 
 class MultipleMajorityVote(torch.nn.Module):
 
@@ -135,3 +134,8 @@ class MultipleMajorityVote(torch.nn.Module):
 
     def get_post_grad(self):
         return torch.cat([mv.post.grad for mv in self.mvs], 0)
+
+    def set_post(self, value):
+
+        for mv in self.mvs:
+            mv.set_post(value)
