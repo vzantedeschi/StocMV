@@ -118,10 +118,9 @@ class MultipleMajorityVote(torch.nn.Module):
 
     def voter_strength(self, batchs):
         """ expected accuracy of a voter of the ensemble"""
-        # import pdb; pdb.set_trace()
-        l = torch.stack([w * mv.voter_strength(batch) for mv, w, batch in zip(self.mvs, self.weights, batchs)])
+        l = torch.stack([w * sum(mv.voter_strength(batch)) for mv, w, batch in zip(self.mvs, self.weights, batchs)])
 
-        return l.sum(0)
+        return l
 
     def predict(self, X):
         
