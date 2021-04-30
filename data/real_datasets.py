@@ -36,7 +36,7 @@ def fetch_SVMGUIDE1(path, valid_size=0.2, seed=None):
     y_train[y_train == 0] = -1
     y_test[y_test == 0] = -1
 
-    X_val, y_val = get_validation_set(X_train, y_train, valid_size)
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -57,7 +57,7 @@ def fetch_CODRNA(path, valid_size=0.2, test_size=0.2, seed=None):
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size))
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
@@ -78,7 +78,7 @@ def fetch_PHISHING(path, valid_size=0.2, test_size=0.2, seed=None):
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
-    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size))
+    X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
