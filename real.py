@@ -159,6 +159,7 @@ def main(cfg):
         np.save(SAVE_DIR / "err-b.npy", seed_results)
 
         monitor.close()
+        del trainloader, testloader
     
     assert len(train_errors) == cfg.num_trials, "Wrong number of seed results"
     results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths))}
