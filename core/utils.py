@@ -25,6 +25,8 @@ class BetaInc(torch.autograd.Function):
     @staticmethod
     def forward(ctx, p, q, x):
 
+        x = torch.clamp(x, 0, 1)
+
         ctx.save_for_backward(p, q, x)
         # deal with dirac distributions
         if p == 0.:
@@ -38,7 +40,7 @@ class BetaInc(torch.autograd.Function):
     @staticmethod
     def backward(ctx, grad):
         p, q, x = ctx.saved_tensors
-
+        
         if p == 0. or q == 0. or x == 0.: # deal with dirac distributions
             grad_p, grad_q, grad_x = 0., 0., 0.
 
