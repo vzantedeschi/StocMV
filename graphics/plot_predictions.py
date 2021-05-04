@@ -44,4 +44,4 @@ def plot_2D(data, model, bound=None, res=0.02, margin=0.1, classes=[-1, 1]):
     plt.ylim(yy.min(), yy.max())
 
     if bound:
-        plt.text(xx.max() - .1, yy.min() + .3, ('%.2f' % bound).lstrip('0'), size=15, horizontalalignment='right')
+        plt.text(xx.max() - .1, yy.min() + .3, ('%.2f' % bound).lstrip('0'), size=30, horizontalalignment='right')
