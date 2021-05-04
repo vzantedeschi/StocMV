@@ -5,7 +5,7 @@ from core.distributions import distr_dict
 
 class MajorityVote(torch.nn.Module):
 
-    def __init__(self, voters, prior, mc_draws=10, distr="dirichlet"):
+    def __init__(self, voters, prior, mc_draws=10, distr="dirichlet", kl_factor=1.):
 
         super(MajorityVote, self).__init__()
         
@@ -22,6 +22,7 @@ class MajorityVote(torch.nn.Module):
         post = torch.rand(self.num_voters) * 2 + 1e-9 # uniform draws in (0, 2]
         self.post = torch.nn.Parameter(torch.log(post), requires_grad=True)  # use log (and apply exp(post) later so that posterior parameters are always positive)
         self.distribution = distr_dict[distr](self.post, mc_draws)
+        self.kl_factor = kl_factor
 
     def forward(self, x):
         return self.voters(x)
@@ -67,7 +68,7 @@ class MajorityVote(torch.nn.Module):
 
     def KL(self):
 
-        return self.distribution.KL(self.prior)
+        return self.kl_factor * self.distribution.KL(self.prior)
 
     def get_post(self):
         return torch.exp(self.post)
@@ -89,7 +90,7 @@ class MajorityVote(torch.nn.Module):
 
 class MultipleMajorityVote(torch.nn.Module):
 
-    def __init__(self, voter_sets, priors, weights, mc_draws=10, posteriors=None, distr="dirichlet"):
+    def __init__(self, voter_sets, priors, weights, mc_draws=10, posteriors=None, distr="dirichlet",  kl_factor=1.):
 
         super(MultipleMajorityVote, self).__init__()
 
@@ -99,10 +100,10 @@ class MultipleMajorityVote(torch.nn.Module):
         if posteriors is not None:
             assert len(priors) == len(posteriors), "must specify same number of priors and posteriors"
 
-            self.mvs = torch.nn.ModuleList([MajorityVote(voters, prior, mc_draws=mc_draws, posterior=post, distr=distr) for voters, prior, post in zip(voter_sets, priors, posteriors)])
+            self.mvs = torch.nn.ModuleList([MajorityVote(voters, prior, mc_draws=mc_draws, posterior=post, distr=distr, kl_factor=kl_factor) for voters, prior, post in zip(voter_sets, priors, posteriors)])
 
         else:
-            self.mvs = torch.nn.ModuleList([MajorityVote(voters, prior, mc_draws=mc_draws, distr=distr) for voters, prior in zip(voter_sets, priors)])
+            self.mvs = torch.nn.ModuleList([MajorityVote(voters, prior, mc_draws=mc_draws, distr=distr, kl_factor=kl_factor) for voters, prior in zip(voter_sets, priors)])
 
         self.weights = weights
 

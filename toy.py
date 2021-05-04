@@ -34,13 +34,13 @@ def main(cfg):
     print("results will be saved in:", SAVE_DIR.resolve()) 
     
     # define params for each method
-    risks = { # type: (loss, bound-coeff, distribution-type)
-        "exact": (None, 1., "dirichlet"),
-        "MC": (sigmoid_loss, 1., "dirichlet"),
-        "rand": (lambda x, y, z: rand_loss(x, y, z, n=cfg.training.rand_n), 2., "categorical"),
-        "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical"),
-        "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical"),
-        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2) - 1, "categorical")
+    risks = { # type: (loss, bound-coeff, distribution-type, kl factor)
+        "exact": (None, 1., "dirichlet", 1.),
+        "MC": (sigmoid_loss, 1., "dirichlet", 1.),
+        "Rnd": (lambda x, y, z: rand_loss(x, y, z, n=cfg.training.rand_n), 2., "categorical", cfg.training.rand_n),
+        "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical", 1.),
+        "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 1.),
+        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2) - 1, "categorical", 1.)
     }
 
     train_errors, test_errors, train_losses, bounds, times = [], [], [], [], []
@@ -70,18 +70,18 @@ def main(cfg):
 
         monitor = MonitorMV(SAVE_DIR)
 
-        loss, coeff, distr = risks[cfg.training.risk]
+        loss, coeff, distr, kl_factor = risks[cfg.training.risk]
 
         if cfg.model.pred == "rf":
             betas = [torch.ones(M) * cfg.model.prior for p in predictors] # prior
 
             # weights proportional to data sizes
-            model = MultipleMajorityVote(predictors, betas, weights=(cfg.model.m, 1-cfg.model.m), mc_draws=cfg.training.MC_draws, distr=distr)
+            model = MultipleMajorityVote(predictors, betas, weights=(cfg.model.m, 1-cfg.model.m), mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
         
         else:
             betas = torch.ones(M) * cfg.model.prior # prior
 
-            model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr)
+            model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
 
         # get voter predictions
         if cfg.model.pred == "rf":
