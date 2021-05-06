@@ -8,6 +8,7 @@ model:
   bootstrap: 0.5
   tree_depth: None
   m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
+  uniform: False
 
 training:
   seed: 23042021
@@ -18,7 +19,7 @@ training:
   opt_bound: True
   sigmoid_c: 100
   rand_n: 100
-  exp_c: 3
+  exp_c: 4
   MC_draws: 10
 
 dataset: 'SVMGUIDE'

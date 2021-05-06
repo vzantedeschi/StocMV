@@ -37,12 +37,11 @@ def main(cfg):
     # define params for each method
     risks = { # type: (loss, bound-coeff, distribution-type, kl factor)
         "exact": (None, 1., "dirichlet", 1.),
-        "Unif": (None, 1., "dirichlet", 1.),
         "MC": (lambda x, y, z: sigmoid_loss(x, y, z, c=cfg.training.sigmoid_c), 1., "dirichlet", 1.),
         "Rnd": (lambda x, y, z: rand_loss(x, y, z, n=cfg.training.rand_n), 2., "categorical", cfg.training.rand_n),
         "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical", 1.),
         "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 1.),
-        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2) - 1, "categorical", 1.)
+        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2), "categorical", 1.)
     }
 
     train_errors, test_errors, train_losses, bounds, strengths, times = [], [], [], [], [], []
@@ -129,13 +128,16 @@ def main(cfg):
 
         seed_results = {}
 
-        if cfg.training.risk == "uniform":
+        if cfg.model.uniform: # set posterior to the uniform distribution
             model.set_post(torch.ones(M))
 
-            best_train_stats, test_error, time = notraining_routine(trainloader, testloader, model, bound, cfg.bound.type, loss=loss)
+            best_train_stats, test_error, train_error, time = notraining_routine(trainloader, testloader, model, bound, cfg.bound.type, loss=loss, loss_eval=loss)
 
-            train_errors.append(best_train_stats['error'])
-            seed_results["train-error"] = best_train_stats['error']
+            train_errors.append(train_error['error'])
+            train_losses.append(best_train_stats['error'])
+
+            seed_results["train-error"] = train_error['error']
+            seed_results["train-risk"] = best_train_stats['error']
 
         else:
 
