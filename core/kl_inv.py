@@ -50,14 +50,14 @@ class klInvFunction(torch.autograd.Function):
 
         ctx.out = out
         ctx.mode = mode
-
+        
         return out
 
     @staticmethod
     def backward(ctx, grad_output):
         q, epsilon = ctx.saved_tensors
 
-        if q == 1. or ctx.out == 0. or ctx.out == 1.:
+        if q == 0. or q == 1. or ctx.out == 0. or ctx.out == 1.:
             return grad_output * 0., grad_output * 0., None
 
         term_1 = (1. - q)/(1. - ctx.out)
