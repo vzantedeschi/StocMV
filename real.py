@@ -26,7 +26,9 @@ def main(cfg):
 
     ROOT_DIR = Path(ROOT_DIR)
 
-    if cfg.training.risk != "uniform":
+    if cfg.model.uniform:
+        ROOT_DIR /= "uniform"
+    else:
         ROOT_DIR /= "lr={cfg.training.lr}/batch-size={cfg.training.batch_size}/"
 
     if cfg.training.risk == "MC":
