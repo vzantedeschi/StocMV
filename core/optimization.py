@@ -37,7 +37,6 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
     pbar = tqdm(dataloader)
 
     for i, batch in enumerate(pbar):
-        # import pdb; pdb.set_trace()
 
         n = len(batch[0])
         data = batch[1], model(batch[0])
@@ -72,10 +71,10 @@ def train_stochastic_multiset(dataloaders, model, optimizer, epoch, learner=None
     train_obj = 0.
 
     pbar = tqdm(range(len(dataloaders[0])))
-
+    
     for i, *batches in zip(pbar, *dataloaders):
         # import pdb; pdb.set_trace()
-
+        
         X = [batch[0] for batch in batches]
         # sum sizes of loaders
         n = sum(map(len, X))
@@ -93,7 +92,7 @@ def train_stochastic_multiset(dataloaders, model, optimizer, epoch, learner=None
 
         else:
             cost = model.risk(data, loss)
-            
+
         train_obj += cost.item()
 
         pbar.set_description("avg train obj %f" % (train_obj / (i + 1)))

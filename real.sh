@@ -1,13 +1,13 @@
 for b in seeger
 do
-	for d in MNIST PENDIGITS FASHION PROTEIN SENSORLESS SHUTTLE
+	for d in SHUTTLE MNIST FASHION SENSORLESS PROTEIN PENDIGITS
 	do
-		for m in 10 100
+		for m in 100
 		do
 
-			for r in exact MC FO SO
+			for r in Rnd exp SO
 			do
-				python3 real.py dataset=$d model.M=$m bound.type=$b training.risk=$r num_workers=8
+				python3 real.py dataset=$d model.M=$m bound.type=$b training.risk=$r model.pred=rf
 			done
 		done
 

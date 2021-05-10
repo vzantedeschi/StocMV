@@ -30,10 +30,10 @@ class BetaInc(torch.autograd.Function):
         ctx.save_for_backward(p, q, x)
         # deal with dirac distributions
         if p == 0.:
-            return torch.tensor(1) # for any x, cumulative = 1.
+            return torch.tensor(1.) # for any x, cumulative = 1.
 
         elif q == 0. or x == 0.:
-            return torch.tensor(0) # cumulative = 0.
+            return torch.tensor(0.) # cumulative = 0.
     
         return torch.tensor(betainc(x, p, q))
 

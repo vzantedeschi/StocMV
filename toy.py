@@ -39,8 +39,8 @@ def main(cfg):
         "MC": (sigmoid_loss, 1., "dirichlet", 1.),
         "Rnd": (lambda x, y, z: rand_loss(x, y, z, n=cfg.training.rand_n), 2., "categorical", cfg.training.rand_n),
         "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical", 1.),
-        "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 1.),
-        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2), "categorical", 1.)
+        "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 2.),
+        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2), "categorical", np.exp(cfg.training.exp_c / (1-np.exp(cfg.training.exp_c))))
     }
 
     train_errors, test_errors, train_losses, bounds, times = [], [], [], [], []

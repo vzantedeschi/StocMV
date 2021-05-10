@@ -7,7 +7,7 @@ def kl_inv(q, epsilon, mode, nb_iter_max=1000):
     # bisection optimization method
     
     assert mode in ["MIN", "MAX"]
-    assert epsilon >= 0
+    assert epsilon >= 0, epsilon
     assert 0. <= q <= 1., q
 
     if(mode == "MAX"):
@@ -57,7 +57,7 @@ class klInvFunction(torch.autograd.Function):
     def backward(ctx, grad_output):
         q, epsilon = ctx.saved_tensors
 
-        if q == 0. or q == 1. or ctx.out == 0. or ctx.out == 1.:
+        if torch.isclose(q, torch.tensor(0.)) or torch.isclose(q, torch.tensor(1.)) or ctx.out == 0. or ctx.out == 1.:
             return grad_output * 0., grad_output * 0., None
 
         term_1 = (1. - q)/(1. - ctx.out)
@@ -65,5 +65,8 @@ class klInvFunction(torch.autograd.Function):
 
         grad_q = torch.log(term_1/term_2) / (term_1-term_2)
         grad_epsilon = 1. / (term_1-term_2)
+
+        if torch.isnan(grad_q) or torch.isnan(grad_epsilon):
+            import pdb; pdb.set_trace()
 
         return grad_output * grad_q, grad_output * grad_epsilon, None

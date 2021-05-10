@@ -1,5 +1,5 @@
 num_trials: 10
-num_workers: 4
+num_workers: 8
 
 model:
   M: 100 # number of predictors, if stumps: 2*M per dimension
