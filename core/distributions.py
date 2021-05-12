@@ -1,12 +1,12 @@
 import torch
 import numpy as np
 
-from torch.distributions.dirichlet import Dirichlet
+from torch.distributions.dirichlet import Dirichlet as Dir
 from torch import lgamma, digamma
 
 from core.utils import BetaInc
 
-class DirichletCustom():
+class Dirichlet():
 
     def __init__(self, alpha, mc_draws=10):
 
@@ -53,7 +53,18 @@ class DirichletCustom():
 
     def rsample(self):
 
-        return Dirichlet(torch.exp(self.alpha)).rsample((self.mc_draws,))
+        return Dir(torch.exp(self.alpha)).rsample((self.mc_draws,))
+
+    def mean(self):
+        return torch.softmax(self.alpha, 0)
+
+    def mode(self):
+        assert all(self.alpha > 1), "can compute mode only of Dirichlet with alpha > 1"
+
+        exp_alpha = torch.exp(self.alpha) - 1
+
+        return exp_alpha / exp_alpha.sum()
+
 
 class Categorical():
 
@@ -108,6 +119,6 @@ class Categorical():
         return torch.nn.functional.softmax(self.theta, dim=0)
 
 distr_dict = {
-    "dirichlet": DirichletCustom,
+    "dirichlet": Dirichlet,
     "categorical": Categorical
 }
