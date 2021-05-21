@@ -53,8 +53,8 @@ def fetch_CODRNA(path, valid_size=0.2, test_size=0.2, seed=None):
         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/cod-rna', data_path)
 
     X, Y = read_idx_file(data_path, 8)
-    Y[Y == -1] = 0
-
+    Y[Y == 0] = -1
+    
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
     X_val, y_val = get_validation_set(X_train, y_train, valid_size / (1 - test_size), seed)
@@ -74,7 +74,7 @@ def fetch_PHISHING(path, valid_size=0.2, test_size=0.2, seed=None):
         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/binary/phishing', data_path)
 
     X, Y = read_idx_file(data_path, 68, " ")
-    Y[Y == -1] = 0
+    Y[Y == 0] = -1
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)
 
