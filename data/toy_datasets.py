@@ -43,7 +43,8 @@ def toy_dataset(name, n_train, n_test, **kwargs):
         X_train, y_train, X_test, y_test = DATASETS[name](n_train // 2, n_test // 2, means=((-1, 0), (1, 0)), scales=(np.diag([0.1, 1]), np.diag([0.1, 1])))
 
     else:
-        X_train, y_train, X_test, y_test = DATASETS[name](n_train, n_test)
+        noise = kwargs.pop("noise", 0.05)
+        X_train, y_train, X_test, y_test = DATASETS[name](n_train, n_test, noise)
     
     X_train, y_train = shuffle(X_train, y_train)
     y_train[y_train == 0] = -1

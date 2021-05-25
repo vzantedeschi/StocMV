@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
-    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/{cfg.dataset.N_train}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{int(cfg.training.seed)+cfg.num_trials}/"
+    SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/noise={cfg.dataset.noise}/{cfg.dataset.N_train}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{int(cfg.training.seed)+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
 
@@ -48,7 +48,7 @@ def main(cfg):
         
         deterministic(int(cfg.training.seed)+i)
 
-        data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test) 
+        data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test, noise=cfg.dataset.noise) 
 
         if cfg.model.pred == "stumps-uniform":
             predictors, M = uniform_decision_stumps(cfg.model.M, 2, data.X_train.min(0), data.X_train.max(0))
@@ -123,7 +123,15 @@ def main(cfg):
             train_loss = model.risk(train_data, loss)
             b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_loss, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
             train_losses.append(train_loss.item())
-        
+            
+            train_SO = model.risk(train_data, lambda x, y, z: moment_loss(x, y, z, order=2))
+            b_SO = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_SO, cfg.bound.delta, m=m, coeff=4, verbose=True))
+
+            train_FO = model.risk(train_data, lambda x, y, z: moment_loss(x, y, z, order=1))
+            b_FO = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_FO, cfg.bound.delta, m=m, coeff=2, verbose=True))
+
+            print(b_FO, b_SO)
+
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)
@@ -133,7 +141,7 @@ def main(cfg):
 
         plot_2D(data, model, bound=b)
 
-        plt.title(f"{cfg.model.pred}, {cfg.bound.type} bound, M={M}")
+        # plt.title(f"{cfg.model.pred}, {cfg.bound.type} bound, M={M}")
 
         plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
         plt.clf()

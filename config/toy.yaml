@@ -3,7 +3,7 @@ num_trials: 10
 model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
   prior: 1 # param of the Dirichlet prior
-  pred: "stumps-custom"
+  pred: "stumps-uniform"
   bootstrap: 0.5
   tree_depth: None
   m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
@@ -19,8 +19,9 @@ training:
   lr: 0.1
 
 dataset:
-  distr: normals # or moons
-  N_train: 100 # number of training points per class
+  distr: moons
+  noise: 0.05
+  N_train: 1000 # number of training points per class
   N_test: 1000 # number of test points per class
 
 bound:
