@@ -124,8 +124,6 @@ def main(cfg):
             b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_loss, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
             train_losses.append(train_loss.item())
 
-            print(b_FO, b_SO)
-
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)

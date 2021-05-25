@@ -85,10 +85,11 @@ def main(cfg):
         test_errors.append(test_error)
         train_errors.append(train_error)
 
-        if plot:
+        if plot and cfg.num_trials == 1:
             plot_2D(data, model)
 
-            plt.title(f"stumps, M={cfg.model.M}")
+            # plt.title(f"stumps, M={M}")
+            plt.ylabel(f"M={M}", fontsize=30)
 
             plt.savefig(SAVE_DIR / f"n={cfg.dataset.N_train}-M={M}.pdf", bbox_inches='tight', transparent=True)
             plt.clf()

@@ -43,7 +43,8 @@ def plot_2D(data, model, bound=None, res=0.02, margin=0.1, classes=[-1, 1]):
     plt.xlim(xx.min(), xx.max())
     plt.ylim(yy.min(), yy.max())
 
-    plt.axis('off')
+    plt.xticks([])
+    plt.yticks([])
 
     if bound:
         plt.text(xx.max() - .1, yy.max() - .5, ('%.2f' % bound).lstrip('0'), size=30, horizontalalignment='right')
