@@ -123,12 +123,6 @@ def main(cfg):
             train_loss = model.risk(train_data, loss)
             b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_loss, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
             train_losses.append(train_loss.item())
-            
-            train_SO = model.risk(train_data, lambda x, y, z: moment_loss(x, y, z, order=2))
-            b_SO = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_SO, cfg.bound.delta, m=m, coeff=4, verbose=True))
-
-            train_FO = model.risk(train_data, lambda x, y, z: moment_loss(x, y, z, order=1))
-            b_FO = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_FO, cfg.bound.delta, m=m, coeff=2, verbose=True))
 
             print(b_FO, b_SO)
 
