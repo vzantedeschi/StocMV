@@ -44,12 +44,12 @@ class Dirichlet():
 
         thetas = self.rsample()
 
-        r = loss(y_target, y_pred, thetas)
+        r = loss(y_target, y_pred, thetas).mean(0)
 
         if mean:
             return r.mean()
 
-        return r.sum(0)
+        return r.sum()
 
     def rsample(self):
 

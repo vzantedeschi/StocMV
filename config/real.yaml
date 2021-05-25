@@ -19,7 +19,6 @@ training:
   opt_bound: True
   sigmoid_c: 100
   rand_n: 100
-  exp_c: 4
   MC_draws: 10
 
 dataset: 'SVMGUIDE'

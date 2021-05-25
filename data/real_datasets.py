@@ -121,7 +121,7 @@ def fetch_HABERMAN(path, valid_size=0.2, test_size=0.2, seed=None):
 
     data = np.genfromtxt(data_path, delimiter=',')
 
-    X, Y = (data[:, 1:-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
+    X, Y = (data[:, :-1]).astype(np.float32), (data[:, -1] - 1).astype(int)
     Y[Y == 0] = -1
 
     X_train, X_test, y_train, y_test = train_test_split(X, Y, stratify=Y, test_size=test_size, random_state=seed)

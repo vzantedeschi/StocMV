@@ -9,14 +9,14 @@ from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 
-from graphics.plot_predictions import plot_2D
-import matplotlib.pyplot as plt
-
 from core.utils import deterministic
 from data.datasets import Dataset
 from models.naive_bayes import NaiveBayes
 from models.stumps import uniform_decision_stumps
 from models.random_forest import decision_trees, trees_predict
+
+from graphics.plot_predictions import plot_2D
+import matplotlib.pyplot as plt
 
 @hydra.main(config_path='config/non_PB.yaml')
 def main(cfg):

@@ -112,9 +112,13 @@ class MultipleMajorityVote(torch.nn.Module):
         return [mv(x) for mv, x in zip(self.mvs, xs)]
 
     def risk(self, batchs, loss=None, mean=True):
-        risk = sum([w * mv.risk(batch, loss, mean) for mv, w, batch in zip(self.mvs, self.weights, batchs)])
 
-        return risk
+        risks = []
+        for mv, w, batch in zip(self.mvs, self.weights, batchs):
+            # import pdb; pdb.set_trace()
+            risks.append(w * mv.risk(batch, loss, mean))
+
+        return sum(risks)
 
     def voter_strength(self, batchs):
         """ expected accuracy of a voter of the ensemble"""

@@ -9,7 +9,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, ConcatDataset
 
 from core.bounds import BOUNDS
-from core.losses import sigmoid_loss, moment_loss, exp_loss, rand_loss
+from core.losses import sigmoid_loss, moment_loss, rand_loss
 from core.monitors import MonitorMV
 from core.utils import deterministic
 from data.datasets import Dataset, TorchDataset
@@ -17,7 +17,7 @@ from models.majority_vote import MultipleMajorityVote, MajorityVote
 from models.random_forest import two_forests
 from models.stumps import uniform_decision_stumps
 
-from training_routines import stochastic_routine, notraining_routine
+from optimization import stochastic_routine
 
 @hydra.main(config_path='config/real.yaml')
 def main(cfg):
@@ -43,7 +43,6 @@ def main(cfg):
         "Rnd": (lambda x, y, z: rand_loss(x, y, z, n=cfg.training.rand_n), 2., "categorical", cfg.training.rand_n),
         "FO": (lambda x, y, z: moment_loss(x, y, z, order=1), 2., "categorical", 1.),
         "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 2.),
-        "exp": (lambda x, y, z: exp_loss(x, y, z, c=cfg.training.exp_c), np.exp(cfg.training.exp_c / 2), "categorical", cfg.training.exp_c / (1 - np.exp(-cfg.training.exp_c)))
     }
 
     train_errors, test_errors, train_losses, bounds, strengths, times = [], [], [], [], [], []
@@ -54,19 +53,6 @@ def main(cfg):
 
         SAVE_DIR = ROOT_DIR / f"seed={cfg.training.seed+i}"
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
-
-        if (SAVE_DIR / "err-b.npy").is_file():
-            # load saved stats
-            seed_results = np.load(SAVE_DIR / "err-b.npy", allow_pickle=True).item()
-
-            train_errors.append(seed_results["train-error"])
-            test_errors.append(seed_results["test-error"])
-            strengths.append(seed_results["strength"])
-            bounds.append(seed_results[cfg.bound.type])
-            times.append(seed_results["time"])
-            train_losses.append(seed_results.pop("train-risk", None)) # available only for non-exact methods
-
-            continue
 
         data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data", valid_size=0)
 
@@ -128,65 +114,23 @@ def main(cfg):
 
             model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
 
-        seed_results = {}
+        monitor = MonitorMV(SAVE_DIR)
+        optimizer = Adam(model.parameters(), lr=cfg.training.lr)
+        # init learning rate scheduler
+        lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
 
-        if cfg.model.uniform: # set posterior to the uniform distribution
-            model.set_post(torch.ones(M))
-
-            best_train_stats, test_error, train_error, time = notraining_routine(trainloader, testloader, model, bound, cfg.bound.type, loss=loss, loss_eval=loss)
-
-            train_errors.append(train_error['error'])
-            train_losses.append(best_train_stats['error'])
-
-            seed_results["train-error"] = train_error['error']
-            seed_results["train-risk"] = best_train_stats['error']
-
-        else:
-
-            monitor = MonitorMV(SAVE_DIR)
-            optimizer = Adam(model.parameters(), lr=cfg.training.lr)
-            # init learning rate scheduler
-            lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
-
-            if cfg.training.risk in ["exact", "MC"]:
-                
-                *_, best_train_stats, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
-                
-                train_errors.append(best_train_stats['error'])
-                seed_results["train-error"] = best_train_stats['error']
-
-            else:
-                *_, best_train_stats, test_error, train_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, loss_eval=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
-            
-                train_errors.append(train_error['error'])
-                train_losses.append(best_train_stats['error'])
-
-                seed_results["train-error"] = train_error['error']
-                seed_results["train-risk"] = best_train_stats['error']
-
-            monitor.close()
-
+        *_, best_train_stats, train_error, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
+    
+        train_errors.append(train_error['error'])
+        train_losses.append(best_train_stats['error'])
         strengths.append(best_train_stats['strength'])
         test_errors.append(test_error['error'])
         bounds.append(best_train_stats[cfg.bound.type])
         times.append(time)
 
-        seed_results["test-error"] = test_error['error']
-        seed_results[cfg.bound.type] = best_train_stats[cfg.bound.type]
-        seed_results["time"] = time
-        seed_results["posterior"] = model.get_post().detach().numpy()
-        seed_results["strength"] = best_train_stats["strength"]
-
-        # save seed results
-        np.save(SAVE_DIR / "err-b.npy", seed_results)
-
-        del trainloader, testloader
+        monitor.close()
     
-    assert len(train_errors) == cfg.num_trials, "Wrong number of seed results"
-    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths))}
-
-    if cfg.training.risk in ["SO", "FO"]:
-        results.update({"train-risk": (np.mean(train_losses), np.std(train_losses))})
+    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths)), "train-risk": (np.mean(train_losses), np.std(train_losses))}
 
     np.save(ROOT_DIR / "err-b.npy", results)
 

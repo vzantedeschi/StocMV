@@ -1,8 +1,12 @@
 import torch
 
+from copy import deepcopy
+from time import time
 from tqdm import tqdm
 
-def train_batch(n, data, model, optimizer, learner=None, bound=None, loss=None, nb_iter=1e4, monitor=None):
+from models.majority_vote import MultipleMajorityVote
+
+def train_batch(n, data, model, optimizer, bound=None, loss=None, nb_iter=1e4, monitor=None):
 
     model.train()
 
@@ -12,9 +16,6 @@ def train_batch(n, data, model, optimizer, learner=None, bound=None, loss=None, 
 
         if bound is not None:
             cost = bound(n, model, model.risk(data, loss))
-
-        elif learner is not None:
-            cost = learner.loss(n, model, data)
 
         else:
             cost = model.risk(data, loss)
@@ -27,7 +28,7 @@ def train_batch(n, data, model, optimizer, learner=None, bound=None, loss=None, 
         if monitor:
             monitor.write_all(i, model.get_post(), model.get_post_grad(), train={"Train-obj": cost.item()})
 
-def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=None, loss=None, monitor=None):
+def train_stochastic(dataloader, model, optimizer, epoch, bound=None, loss=None, monitor=None):
 
     model.train()
 
@@ -47,9 +48,6 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         if bound is not None:
             cost = bound(n, model, model.risk(data, loss))
 
-        elif learner is not None:
-            cost = learner.loss(n, model, data)
-
         else:
             cost = model.risk(data, loss)
             
@@ -63,7 +61,7 @@ def train_stochastic(dataloader, model, optimizer, epoch, learner=None, bound=No
         if monitor:
             monitor.write_all(last_iter+i, model.get_post(), model.get_post_grad(), train={"Train-obj": cost.item()})
 
-def train_stochastic_multiset(dataloaders, model, optimizer, epoch, learner=None, bound=None, loss=None, monitor=None):
+def train_stochastic_multiset(dataloaders, model, optimizer, epoch, bound=None, loss=None, monitor=None):
 
     model.train()
 
@@ -86,9 +84,6 @@ def train_stochastic_multiset(dataloaders, model, optimizer, epoch, learner=None
 
         if bound is not None:
             cost = bound(n, model, model.risk(data, loss))
-
-        elif learner is not None:
-            cost = learner.loss(n, model, data)
 
         else:
             cost = model.risk(data, loss)
@@ -164,3 +159,49 @@ def evaluate_multiset(dataloaders, model, epoch=-1, bounds=None, loss=None, moni
         monitor.write(epoch, **{tag: total_metrics})
 
     return total_metrics
+
+def stochastic_routine(trainloader, testloader, model, optimizer, bound, bound_type, loss=None, monitor=None, num_epochs=100, lr_scheduler=None):
+
+    best_bound = float("inf")
+    best_e = -1
+    no_improv = 0
+    best_train_stats = None
+
+    if isinstance(model, MultipleMajorityVote): # then expect multiple dataloaders
+        train_routine = train_stochastic_multiset
+        val_routine = evaluate_multiset
+        test_routine = lambda d, *args, **kwargs: evaluate_multiset((d, d), *args, **kwargs)
+    else:
+        train_routine, val_routine, test_routine = train_stochastic, evaluate, evaluate
+
+    
+    t1 = time()
+    for e in range(num_epochs):
+        train_routine(trainloader, model, optimizer, epoch=e, bound=bound, loss=loss, monitor=monitor)
+
+        train_stats = val_routine(trainloader, model, epoch=e, bounds={bound_type: bound}, loss=loss, monitor=monitor, tag="train") # just for monitoring purposes
+        print(f"Epoch {e}: {train_stats[bound_type]}\n")
+        
+        no_improv += 1
+        if train_stats[bound_type] < best_bound:
+            best_bound = train_stats[bound_type]
+            best_train_stats = train_stats
+            best_e = e
+            best_model = deepcopy(model)
+            no_improv = 0
+
+        # reduce learning rate if needed
+        if lr_scheduler:
+            lr_scheduler.step(train_stats[bound_type])
+
+        if no_improv == num_epochs // 4:
+            break
+
+    t2 = time()
+
+    train_error = val_routine(trainloader, best_model)
+    test_error = test_routine(testloader, best_model)
+
+    print(f"Test error: {test_error['error']}; {bound_type} bound: {best_train_stats[bound_type]}\n")
+
+    return best_model, best_bound, best_train_stats, train_error, test_error, t2-t1
