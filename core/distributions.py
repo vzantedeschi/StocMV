@@ -65,6 +65,9 @@ class Dirichlet():
 
         return exp_alpha / exp_alpha.sum()
 
+    def entropy(self):
+        return Dir(torch.exp(self.alpha)).entropy()
+
 
 class Categorical():
 
@@ -117,6 +120,11 @@ class Categorical():
     def get_theta(self):
         
         return torch.nn.functional.softmax(self.theta, dim=0)
+
+    def entropy(self):
+
+        theta = self.get_theta()
+        return - torch.sum(theta * torch.log(theta))
 
 distr_dict = {
     "dirichlet": Dirichlet,

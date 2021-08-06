@@ -21,6 +21,10 @@ from optimization import train_batch
 from graphics.plot_predictions import plot_2D
 import matplotlib.pyplot as plt
 
+def bayesian_error(data):
+    """ computed on test set """
+
+
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
@@ -43,7 +47,7 @@ def main(cfg):
         "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 2.),
     }
 
-    train_errors, test_errors, train_losses, bounds, times = [], [], [], [], []
+    train_errors, test_errors, train_losses, bounds, entropies, times = [], [], [], [], [], []
     for i in range(cfg.num_trials):
         
         deterministic(int(cfg.training.seed)+i)
@@ -127,6 +131,7 @@ def main(cfg):
         train_errors.append(train_error.item())
         test_errors.append(test_error.item())
         bounds.append(b)
+        entropies.append(model.entropy().item())
         times.append(t2-t1)
         
         monitor.close()
@@ -138,7 +143,7 @@ def main(cfg):
         plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
         plt.clf()
     
-    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times))}
+    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "entropy": (np.mean(entropies), np.std(entropies))}
 
     if cfg.training.risk not in ["exact", "MC"]:
         results.update({"train-risk": (np.mean(train_losses), np.std(train_losses))})

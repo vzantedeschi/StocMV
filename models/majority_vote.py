@@ -88,6 +88,9 @@ class MajorityVote(torch.nn.Module):
 
         self.distribution.alpha = self.post
 
+    def entropy(self):
+        return self.distribution.entropy()
+
 class MultipleMajorityVote(torch.nn.Module):
 
     def __init__(self, voter_sets, priors, weights, mc_draws=10, posteriors=None, distr="dirichlet",  kl_factor=1.):
