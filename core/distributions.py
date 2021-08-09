@@ -56,7 +56,7 @@ class Dirichlet():
         return Dir(torch.exp(self.alpha)).rsample((self.mc_draws,))
 
     def mean(self):
-        return torch.softmax(self.alpha, 0)
+        return Categorical(self.alpha)
 
     def mode(self):
         assert all(self.alpha > 1), "can compute mode only of Dirichlet with alpha > 1"
@@ -65,8 +65,12 @@ class Dirichlet():
 
         return exp_alpha / exp_alpha.sum()
 
-    def entropy(self):
-        return Dir(torch.exp(self.alpha)).entropy()
+    def entropy(self, of_mean=True):
+
+        if of_mean:
+            return self.mean().entropy()
+        else:
+            return Dir(torch.exp(self.alpha)).entropy()
 
 
 class Categorical():
