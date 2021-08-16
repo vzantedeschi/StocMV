@@ -45,7 +45,7 @@ def main(cfg):
         "SO": (lambda x, y, z: moment_loss(x, y, z, order=2), 4., "categorical", 2.),
     }
 
-    train_errors, test_errors, train_losses, bounds, strengths, entropies, times = [], [], [], [], [], [], []
+    train_errors, test_errors, train_losses, bounds, strengths, entropies, kls, times = [], [], [], [], [], [], [], []
     for i in range(cfg.num_trials):
         
         print("seed", cfg.training.seed+i)
@@ -125,13 +125,14 @@ def main(cfg):
         train_losses.append(best_train_stats['error'])
         strengths.append(best_train_stats['strength'])
         entropies.append(model.entropy().item())
+        kls.append(model.KL().item())
         test_errors.append(test_error['error'])
         bounds.append(best_train_stats[cfg.bound.type])
         times.append(time)
 
         monitor.close()
     
-    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths)), "train-risk": (np.mean(train_losses), np.std(train_losses)), "entropy": (np.mean(entropies), np.std(entropies))}
+    results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths)), "train-risk": (np.mean(train_losses), np.std(train_losses)), "entropy": (np.mean(entropies), np.std(entropies)), "KL": (np.mean(kls), np.std(kls))}
 
     np.save(ROOT_DIR / "err-b.npy", results)
 
