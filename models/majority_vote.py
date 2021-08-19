@@ -147,3 +147,7 @@ class MultipleMajorityVote(torch.nn.Module):
 
         for mv in self.mvs:
             mv.set_post(value)
+
+    def entropy(self):
+
+        return sum([w * mv.entropy() for mv, w in zip(self.mvs, self.weights)])
