@@ -18,7 +18,7 @@ from category_encoders.ordinal import OrdinalEncoder
 from data.utils import get_validation_set, download, read_idx_file
 # BINARY CLASSIFICATION
 
-def fetch_SVMGUIDE1(path, valid_size=0.2, seed=None):
+def fetch_SVMGUIDE1(path, valid_size=0.2, test_size=0.2, seed=None):
 
     path = Path(path)
     train_path = path / 'svmguide1.data'
@@ -36,6 +36,9 @@ def fetch_SVMGUIDE1(path, valid_size=0.2, seed=None):
     y_train[y_train == 0] = -1
     y_test[y_test == 0] = -1
 
+    Y = np.hstack((y_train, y_test))
+    X_train, X_test, y_train, y_test = train_test_split(np.vstack((X_train, X_test)), Y, stratify=Y, test_size=test_size, random_state=seed)
+    
     X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
@@ -183,7 +186,7 @@ def fetch_TICTACTOE(path, valid_size=0.2, test_size=0.2, seed=None):
     )
 
 # MULTICLASS CLASSIFICATION
-def fetch_MNIST(path, valid_size=0.2, seed=None):
+def fetch_MNIST(path, valid_size=0.2, test_size=0.2, seed=None):
 
     path = Path(path)
     train_path = path / 'mnist.scale.bz2'
@@ -198,13 +201,16 @@ def fetch_MNIST(path, valid_size=0.2, seed=None):
     X_train, y_train = read_idx_file(train_path, 784, " ", True)
     X_test, y_test = read_idx_file(test_path, 784, " ", True)
     
+    Y = np.hstack((y_train, y_test))
+    X_train, X_test, y_train, y_test = train_test_split(np.vstack((X_train, X_test)), Y, stratify=Y, test_size=test_size, random_state=seed)
+    
     X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
     )
 
-def fetch_PENDIGITS(path, valid_size=0.2, seed=None):
+def fetch_PENDIGITS(path, valid_size=0.2, test_size=0.2, seed=None):
 
     path = Path(path)
     train_path = path / 'pendigits.data'
@@ -218,14 +224,17 @@ def fetch_PENDIGITS(path, valid_size=0.2, seed=None):
 
     X_train, y_train = read_idx_file(train_path, 16, " ")
     X_test, y_test = read_idx_file(test_path, 16, " ")
-
+    
+    Y = np.hstack((y_train, y_test))
+    X_train, X_test, y_train, y_test = train_test_split(np.vstack((X_train, X_test)), Y, stratify=Y, test_size=test_size, random_state=seed)
+    
     X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
     )
 
-def fetch_PROTEIN(path, valid_size=0.2, seed=None):
+def fetch_PROTEIN(path, valid_size=0.2, test_size=0.2, seed=None):
 
     path = Path(path)
     train_path = path / 'protein.bz2'
@@ -240,6 +249,9 @@ def fetch_PROTEIN(path, valid_size=0.2, seed=None):
     X_train, y_train = read_idx_file(train_path, 357, '  ', True)
     X_test, y_test = read_idx_file(test_path, 357, '  ', True)
 
+    Y = np.hstack((y_train, y_test))
+    X_train, X_test, y_train, y_test = train_test_split(np.vstack((X_train, X_test)), Y, stratify=Y, test_size=test_size, random_state=seed)
+    
     X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
@@ -266,7 +278,7 @@ def fetch_SENSORLESS(path, valid_size=0.2, test_size=0.2, seed=None):
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
     )
 
-def fetch_SHUTTLE(path, valid_size=0.2, seed=None):
+def fetch_SHUTTLE(path, valid_size=0.2, test_size=0.2, seed=None):
 
     path = Path(path)
     train_path = path / 'shuttle.data'
@@ -283,13 +295,16 @@ def fetch_SHUTTLE(path, valid_size=0.2, seed=None):
     X_test, y_test = read_idx_file(test_path, 9, " ")
     y_test -= 1
 
+    Y = np.hstack((y_train, y_test))
+    X_train, X_test, y_train, y_test = train_test_split(np.vstack((X_train, X_test)), Y, stratify=Y, test_size=test_size, random_state=seed)
+    
     X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
     )
 
-def fetch_FASHION_MNIST(path, valid_size=0.2, seed=None):
+def fetch_FASHION_MNIST(path, valid_size=0.2, test_size=0.2, seed=None):
     """code adapted from https://github.com/StephanLorenzen/MajorityVoteBounds/blob/278a2811774e48093a7593e068e5958832cfa686/mvb/data.py#L143"""
     path = Path(path)
     train_path = path / 'fashion-mnist-train.data.gz'
@@ -325,31 +340,11 @@ def fetch_FASHION_MNIST(path, valid_size=0.2, seed=None):
         buf = f.read(10000)
         y_test = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
 
+    Y = np.hstack((y_train, y_test))
+    X_train, X_test, y_train, y_test = train_test_split(np.vstack((X_train, X_test)), Y, stratify=Y, test_size=test_size, random_state=seed)
+    
     X_val, y_val = get_validation_set(X_train, y_train, valid_size, seed)
 
     return dict(
         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
     )
-
-# def fetch_USPS(path, valid_size=0.2, seed=None):
-
-#     path = Path(path)
-#     train_path = path / 'usps.bz2'
-#     test_path = path / 'usps.t.bz2'
-
-#     if not train_path.exists() or not test_path.exists():
-#         path.mkdir(parents=True)
-
-#         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass/usps.bz2 ', train_path)
-#         download('https://www.csie.ntu.edu.tw/~cjlin/libsvmtools/datasets/multiclass/usps.t.bz2', test_path)
-
-#     import pdb; pdb.set_trace()
-    
-#     X_train, y_train = read_idx_file(train_path, 256, " ", True)
-#     X_test, y_test = read_idx_file(test_path, 256, " ", True)
-
-#     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, stratify=y_train, test_size=valid_size, random_state=seed)
-
-#     return dict(
-#         X_train=X_train, y_train=y_train, X_valid=X_val, y_valid=y_val, X_test=X_test, y_test=y_test
-#     )
