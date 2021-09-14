@@ -135,13 +135,14 @@ def main(cfg):
         times.append(t2-t1)
         
         monitor.close()
+        
+        if i == 0: # plot only first trial
+            plot_2D(data, model, bound=b)
 
-        plot_2D(data, model, bound=b)
+            # plt.title(f"{cfg.model.pred}, {cfg.bound.type} bound, M={M}")
 
-        # plt.title(f"{cfg.model.pred}, {cfg.bound.type} bound, M={M}")
-
-        plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
-        plt.clf()
+            plt.savefig(SAVE_DIR / f"{cfg.dataset.distr}.pdf", bbox_inches='tight', transparent=True)
+            plt.clf()
     
     results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "entropy": (np.mean(entropies), np.std(entropies))}
 
