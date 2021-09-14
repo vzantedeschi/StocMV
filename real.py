@@ -61,6 +61,8 @@ def main(cfg):
 
         else:
 
+            seed_results = {}
+
             data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data", valid_size=0)
 
             m = 0
@@ -86,12 +88,12 @@ def main(cfg):
 
                 if cfg.bound.stochastic:
                     print("Evaluate bound regularizations over mini-batch")
-                    bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
+                    bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, coeff=coeff)
 
                 else:
                     print("Evaluate bound regularizations over whole training set")
                     n = len(data.X_train)
-                    bound = lambda _, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff, verbose=True)
+                    bound = lambda _, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, coeff=coeff)
 
             if cfg.model.pred == "rf": # a loader per posterior
 
@@ -127,7 +129,6 @@ def main(cfg):
 
             *_, best_train_stats, train_error, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
     
-        # print(BOUNDS[cfg.bound.type](n, model, torch.tensor(train_error['error']), delta=1e-32, m=int(m*n), coeff=coeff, verbose=True))
         
             seed_results["train-error"] = train_error['error']
             seed_results["test-error"] = test_error['error']
@@ -137,7 +138,7 @@ def main(cfg):
             seed_results["posterior"] = model.get_post().detach().numpy()
             seed_results["strength"] = best_train_stats["strength"]
             seed_results["KL"] = model.KL().item()
-            seed_results["entropy"] = model.entropy.item()
+            seed_results["entropy"] = model.entropy().item()
 
             # save seed results
             np.save(SAVE_DIR / "err-b.npy", seed_results)

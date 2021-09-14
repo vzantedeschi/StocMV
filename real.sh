@@ -1,7 +1,7 @@
-for r in exact MC Rnd FO SO
+for r in FO SO Rnd MC exact
 do
 	# data-dependent prior
-	for d in SHUTTLE MNIST FASHION SENSORLESS PROTEIN PENDIGITS
+	for d in SENSORLESS PROTEIN PENDIGITS SHUTTLE MNIST FASHION 
 	do
 		python3 real.py dataset=$d model.M=100 training.risk=$r model.pred=rf
 	done
