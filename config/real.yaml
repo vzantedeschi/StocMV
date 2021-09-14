@@ -7,6 +7,8 @@ model:
   pred: "rf" # random forest or "stumps-uniform"
   bootstrap: 0.5 # for informed priors
   tree_depth: None # for informed priors
+
+  # deprecated param: m always equal to 0.5
   m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
   uniform: False
 
