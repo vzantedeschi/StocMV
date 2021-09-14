@@ -54,81 +54,102 @@ def main(cfg):
         SAVE_DIR = ROOT_DIR / f"seed={cfg.training.seed+i}"
         SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
-        data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data", valid_size=0)
-
-        m = 0
-        if cfg.model.pred == "stumps-uniform":
-            predictors, M = uniform_decision_stumps(cfg.model.M, data.X_train.shape[1], data.X_train.min(0), data.X_train.max(0))
-
-        elif cfg.model.pred == "rf": # random forest
-
-            if cfg.model.tree_depth == "None":
-                cfg.model.tree_depth = None
-
-            m = cfg.model.m # number of points for learning first prior
-            predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train, max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
+        if (SAVE_DIR / "err-b.npy").is_file():
+            print(SAVE_DIR)
+            # load saved stats
+            seed_results = np.load(SAVE_DIR / "err-b.npy", allow_pickle=True).item()
 
         else:
-            raise NotImplementedError("model.pred should be one the following: [stumps-uniform, rf]")
 
-        loss, coeff, distr, kl_factor = risks[cfg.training.risk]
+            data = Dataset(cfg.dataset, normalize=True, data_path=Path(hydra.utils.get_original_cwd()) / "data", valid_size=0)
 
-        bound = None
-        if cfg.training.opt_bound:
+            m = 0
+            if cfg.model.pred == "stumps-uniform":
+                predictors, M = uniform_decision_stumps(cfg.model.M, data.X_train.shape[1], data.X_train.min(0), data.X_train.max(0))
 
-            print(f"Optimize {cfg.bound.type} bound")
+            elif cfg.model.pred == "rf": # random forest
 
-            if cfg.bound.stochastic:
-                print("Evaluate bound regularizations over mini-batch")
-                bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
+                if cfg.model.tree_depth == "None":
+                    cfg.model.tree_depth = None
+
+                predictors, M = two_forests(cfg.model.M, 0.5, data.X_train, data.y_train, max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
 
             else:
-                print("Evaluate bound regularizations over whole training set")
-                n = len(data.X_train)
-                bound = lambda _, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
+                raise NotImplementedError("model.pred should be one the following: [stumps-uniform, rf]")
 
-        if cfg.model.pred == "rf": # a loader per posterior
+            loss, coeff, distr, kl_factor = risks[cfg.training.risk]
 
-            m_train = int(len(data.X_train) * cfg.model.m)
-            train1 = TorchDataset(data.X_train[m_train:], data.y_train[m_train:])
-            train2 = TorchDataset(data.X_train[:m_train], data.y_train[:m_train])
-            trainloader = [
-                DataLoader(train1, batch_size=cfg.training.batch_size // 2, num_workers=cfg.num_workers, shuffle=True),
-                DataLoader(train2, batch_size=cfg.training.batch_size // 2, num_workers=cfg.num_workers, shuffle=True)
-            ] 
+            bound = None
+            if cfg.training.opt_bound:
 
-        else:
-            train = TorchDataset(data.X_train, data.y_train)
-            trainloader = DataLoader(train, batch_size=cfg.training.batch_size, num_workers=cfg.num_workers, shuffle=True)
+                print(f"Optimize {cfg.bound.type} bound")
 
-        testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
+                if cfg.bound.stochastic:
+                    print("Evaluate bound regularizations over mini-batch")
+                    bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff)
 
-        if cfg.model.pred == "rf":
-            betas = [torch.ones(M) * cfg.model.prior for p in predictors] # prior
+                else:
+                    print("Evaluate bound regularizations over whole training set")
+                    n = len(data.X_train)
+                    bound = lambda _, model, risk: BOUNDS[cfg.bound.type](n, model, risk, delta=cfg.bound.delta, m=int(m*n), coeff=coeff, verbose=True)
 
-            # weights proportional to data sizes
-            model = MultipleMajorityVote(predictors, betas, weights=(cfg.model.m, 1-cfg.model.m), mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
-        
-        else:
-            betas = torch.ones(M) * cfg.model.prior # prior
+            if cfg.model.pred == "rf": # a loader per posterior
 
-            model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
+                m_train = len(data.X_train) // 2
+                train1 = TorchDataset(data.X_train[m_train:], data.y_train[m_train:])
+                train2 = TorchDataset(data.X_train[:m_train], data.y_train[:m_train])
+                trainloader = [
+                    DataLoader(train1, batch_size=cfg.training.batch_size // 2, num_workers=cfg.num_workers, shuffle=True),
+                    DataLoader(train2, batch_size=cfg.training.batch_size // 2, num_workers=cfg.num_workers, shuffle=True)
+                ] 
 
-        monitor = MonitorMV(SAVE_DIR)
-        optimizer = Adam(model.parameters(), lr=cfg.training.lr)
-        # init learning rate scheduler
-        lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
+            else:
+                train = TorchDataset(data.X_train, data.y_train)
+                trainloader = DataLoader(train, batch_size=cfg.training.batch_size, num_workers=cfg.num_workers, shuffle=True)
 
-        *_, best_train_stats, train_error, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
+            testloader = DataLoader(TorchDataset(data.X_test, data.y_test), batch_size=4096, num_workers=cfg.num_workers, shuffle=False)
+
+            if cfg.model.pred == "rf":
+                betas = [torch.ones(M) * cfg.model.prior for p in predictors] # prior
+
+                # weights proportional to data sizes
+                model = MultipleMajorityVote(predictors, betas, weights=(0.5, 0.5), mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
+            
+            else:
+                betas = torch.ones(M) * cfg.model.prior # prior
+
+                model = MajorityVote(predictors, betas, mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
+
+            monitor = MonitorMV(SAVE_DIR)
+            optimizer = Adam(model.parameters(), lr=cfg.training.lr)
+            # init learning rate scheduler
+            lr_scheduler = ReduceLROnPlateau(optimizer, 'min', factor=0.1, patience=2)
+
+            *_, best_train_stats, train_error, test_error, time = stochastic_routine(trainloader, testloader, model, optimizer, bound, cfg.bound.type, loss=loss, monitor=monitor, num_epochs=cfg.training.num_epochs, lr_scheduler=lr_scheduler)
     
-        train_errors.append(train_error['error'])
-        train_losses.append(best_train_stats['error'])
-        strengths.append(best_train_stats['strength'])
-        entropies.append(model.entropy().item())
-        kls.append(model.KL().item())
-        test_errors.append(test_error['error'])
-        bounds.append(best_train_stats[cfg.bound.type])
-        times.append(time)
+        # print(BOUNDS[cfg.bound.type](n, model, torch.tensor(train_error['error']), delta=1e-32, m=int(m*n), coeff=coeff, verbose=True))
+        
+            seed_results["train-error"] = train_error['error']
+            seed_results["test-error"] = test_error['error']
+            seed_results["train-risk"] = best_train_stats["error"]
+            seed_results[cfg.bound.type] = best_train_stats[cfg.bound.type]
+            seed_results["time"] = time
+            seed_results["posterior"] = model.get_post().detach().numpy()
+            seed_results["strength"] = best_train_stats["strength"]
+            seed_results["KL"] = model.KL().item()
+            seed_results["entropy"] = model.entropy.item()
+
+            # save seed results
+            np.save(SAVE_DIR / "err-b.npy", seed_results)
+
+        train_errors.append(seed_results["train-error"])
+        test_errors.append(seed_results["test-error"])
+        entropies.append(seed_results["entropy"])
+        strengths.append(seed_results["strength"])
+        kls.append(seed_results["KL"])
+        bounds.append(seed_results[cfg.bound.type])
+        times.append(seed_results["time"])
+        train_losses.append(seed_results.pop("train-risk", None)) # available only for non-exact methods
 
         monitor.close()
     

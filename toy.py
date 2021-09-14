@@ -65,7 +65,7 @@ def main(cfg):
             if cfg.model.tree_depth == "None":
                 cfg.model.tree_depth = None
 
-            predictors, M = two_forests(cfg.model.M, cfg.model.m, data.X_train, data.y_train, max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
+            predictors, M = two_forests(cfg.model.M, 0.5, data.X_train, data.y_train, max_samples=cfg.model.bootstrap, max_depth=cfg.model.tree_depth, binary=data.binary)
 
         else:
             raise NotImplementedError("model.pred should be one the following: [stumps-uniform, stumps-custom, rf]")
@@ -80,7 +80,7 @@ def main(cfg):
             betas = [torch.ones(M) * cfg.model.prior for p in predictors] # prior
 
             # weights proportional to data sizes
-            model = MultipleMajorityVote(predictors, betas, weights=(cfg.model.m, 1-cfg.model.m), mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
+            model = MultipleMajorityVote(predictors, betas, weights=(0.5, 0.5), mc_draws=cfg.training.MC_draws, distr=distr, kl_factor=kl_factor)
         
         else:
             betas = torch.ones(M) * cfg.model.prior # prior
@@ -90,7 +90,7 @@ def main(cfg):
         # get voter predictions
         if cfg.model.pred == "rf":
 
-            m = int(cfg.dataset.N_train*cfg.model.m) # number of points for learning first prior
+            m = cfg.dataset.N_train // 2 # number of points for learning first prior
             # use first m data for learning the second posterior, and the remainder for the first one
             train_data = [(train_y[m:], predictors[0](train_x[m:])), (train_y[:m], predictors[1](train_x[:m]))]
             # test both posteriors on entire test set
@@ -105,7 +105,7 @@ def main(cfg):
         if cfg.training.opt_bound:
 
             print(f"Optimize {cfg.bound.type} bound")
-            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, m=m, coeff=coeff, monitor=monitor)
+            bound = lambda n, model, risk: BOUNDS[cfg.bound.type](n, model, risk, cfg.bound.delta, coeff=coeff, monitor=monitor)
 
         optimizer = Adam(model.parameters(), lr=cfg.training.lr)
 
@@ -120,12 +120,12 @@ def main(cfg):
 
         if cfg.training.risk in ["exact", "MC"]:
             # evaluate bound with error
-            b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_error, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
+            b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_error, cfg.bound.delta, coeff=coeff, verbose=True))
 
         else:
             # evaluate bound with loss
             train_loss = model.risk(train_data, loss)
-            b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_loss, cfg.bound.delta, m=m, coeff=coeff, verbose=True))
+            b = float(BOUNDS[cfg.bound.type](cfg.dataset.N_train, model, train_loss, cfg.bound.delta, coeff=coeff, verbose=True))
             train_losses.append(train_loss.item())
 
         train_errors.append(train_error.item())
