@@ -4,18 +4,20 @@ model:
   M: 4 # number of predictors, if stumps: 2*M per dimension
   prior: 1 # param of the Dirichlet prior
   pred: "stumps-uniform"
-  bootstrap: 0.5
-  tree_depth: None
+  bootstrap: 0.5 # only for pred = rf
+  tree_depth: None # only for pred = rf
+
+  # deprecated param: m always equal to 0.5
   m: 0.5 # for informed priors: use first m * N_train points to learn one prior, and last (1-m) * N_train to learn the other prior
 
 training:
-  seed: 23032021
-  iter: 1e3
-  risk: "exact" # or MC
-  opt_bound: True
-  sigmoid_c: 100
-  rand_n: 100
-  MC_draws: 10
+  seed: 541713
+  iter: 1e3 # number of Gradient Descent iterations
+  risk: "exact" # or MC, FO, SO, Rnd
+  opt_bound: True # if False, optimize only risk
+  sigmoid_c: 100 # only for MC
+  rand_n: 100 # only for Rnd
+  MC_draws: 10 # only for MC
   lr: 0.1
 
 dataset:

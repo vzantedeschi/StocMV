@@ -21,9 +21,12 @@ def load_normals(n_train, n_test, means, scales):
     return train_x, train_y, test_x, test_y
     
 def load_moons(n_train, n_test, noise=0.05, normalize=True):
-
-    train_x, train_y = datasets.make_moons(n_samples=n_train, noise=noise)
-    test_x, test_y = datasets.make_moons(n_samples=n_test, noise=noise)
+    
+    train_c1 = np.random.binomial(n_train, 0.5) # draw number of train points for class 1
+    test_c1 = np.random.binomial(n_test, 0.5) # draw number of test points for class 1
+    
+    train_x, train_y = datasets.make_moons(n_samples=(train_c1, n_train - train_c1), noise=noise)
+    test_x, test_y = datasets.make_moons(n_samples=(test_c1, n_test - test_c1), noise=noise)
 
     if normalize:
         scaler = StandardScaler()
