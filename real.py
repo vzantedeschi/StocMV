@@ -142,6 +142,7 @@ def main(cfg):
 
             # save seed results
             np.save(SAVE_DIR / "err-b.npy", seed_results)
+            monitor.close()
 
         train_errors.append(seed_results["train-error"])
         test_errors.append(seed_results["test-error"])
@@ -151,9 +152,7 @@ def main(cfg):
         bounds.append(seed_results[cfg.bound.type])
         times.append(seed_results["time"])
         train_losses.append(seed_results.pop("train-risk", None)) # available only for non-exact methods
-
-        monitor.close()
-    
+ 
     results = {"train-error": (np.mean(train_errors), np.std(train_errors)),"test-error": (np.mean(test_errors), np.std(test_errors)), cfg.bound.type: (np.mean(bounds), np.std(bounds)), "time": (np.mean(times), np.std(times)), "strength": (np.mean(strengths), np.std(strengths)), "train-risk": (np.mean(train_losses), np.std(train_losses)), "entropy": (np.mean(entropies), np.std(entropies)), "KL": (np.mean(kls), np.std(kls))}
 
     np.save(ROOT_DIR / "err-b.npy", results)

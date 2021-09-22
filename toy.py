@@ -31,9 +31,15 @@ def main(cfg):
     SAVE_DIR = f"{hydra.utils.get_original_cwd()}/results/{cfg.dataset.distr}/noise={cfg.dataset.noise}/{cfg.dataset.N_train}/{cfg.training.risk}/{cfg.bound.type}/optimize-bound={cfg.training.opt_bound}/{cfg.model.pred}/M={cfg.model.M}/prior={cfg.model.prior}/lr={cfg.training.lr}/seeds={cfg.training.seed}-{int(cfg.training.seed)+cfg.num_trials}/"
 
     SAVE_DIR = Path(SAVE_DIR)
+    
 
     if cfg.training.risk == "MC":
         SAVE_DIR = SAVE_DIR / f"MC={cfg.training.MC_draws}"
+    
+    if (SAVE_DIR / "err-b.npy").is_file():
+        print("results already saved in", SAVE_DIR)
+        exit(0)
+
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
 
     print("results will be saved in:", SAVE_DIR.resolve()) 
@@ -49,7 +55,7 @@ def main(cfg):
 
     train_errors, test_errors, train_losses, bounds, entropies, times = [], [], [], [], [], []
     for i in range(cfg.num_trials):
-        
+         
         deterministic(int(cfg.training.seed)+i)
 
         data = Dataset(cfg.dataset.distr, n_train=cfg.dataset.N_train, n_test=cfg.dataset.N_test, noise=cfg.dataset.noise) 
