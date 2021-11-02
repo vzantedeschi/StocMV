@@ -30,3 +30,15 @@ You can also run a specific experiment, passing the chosen values for the hyper-
 ```bash
 python3 real.py dataset=SENSORLESS model.M=100 training.risk=MC model.pred=rf model.prior=2 model.tree_depth=5
 ```
+
+### Bibtex
+If you find this work useful, please cite:
+
+```
+@article{zantedeschi2021learning,
+  title={Learning Stochastic Majority Votes by Minimizing a PAC-Bayes Generalization Bound},
+  author={Zantedeschi, Valentina and Viallard, Paul and Morvant, Emilie and Emonet, R{\'e}mi and Habrard, Amaury and Germain, Pascal and Guedj, Benjamin},
+  journal={NeurIPS},
+  year={2021}
+}
+```
