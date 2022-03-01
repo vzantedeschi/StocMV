@@ -21,10 +21,6 @@ from optimization import train_batch
 from graphics.plot_predictions import plot_2D
 import matplotlib.pyplot as plt
 
-def bayesian_error(data):
-    """ computed on test set """
-
-
 @hydra.main(config_path='config/toy.yaml')
 def main(cfg):
 
