@@ -2,6 +2,8 @@
 
 ### Dependencies
 
+Running with python3.6.
+
 Install PyTorch, following the [guidelines](https://pytorch.org/get-started/locally/).
 Then install the requirements:
 
@@ -29,6 +31,13 @@ bash real.sh
 You can also run a specific experiment, passing the chosen values for the hyper-parameters as follows:
 ```bash
 python3 real.py dataset=SENSORLESS model.M=100 training.risk=MC model.pred=rf model.prior=2 model.tree_depth=5
+```
+
+### Minimal script
+To run a simplified script that supports only the optimization of the proposed "exact" and "MC" bounds, run:
+```bash
+python3 minimal.py exact
+python3 minimal.py MC
 ```
 
 ### Bibtex
